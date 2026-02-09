@@ -11,19 +11,23 @@ type View = 'landing' | 'create' | 'join' | 'call';
 export default function Home() {
   const [view, setView] = useState<View>('landing');
   const [roomId, setRoomId] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string>('');
 
-  const handleRoomCreated = (id: string) => {
+  const handleRoomCreated = (id: string, name: string) => {
     setRoomId(id);
+    setUserName(name);
     setView('call');
   };
 
-  const handleRoomJoined = (id: string) => {
+  const handleRoomJoined = (id: string, name: string) => {
     setRoomId(id);
+    setUserName(name);
     setView('call');
   };
 
   const handleLeave = () => {
     setRoomId(null);
+    setUserName('');
     setView('landing');
   };
 
@@ -48,7 +52,7 @@ export default function Home() {
         />
       )}
       {view === 'call' && roomId && (
-        <VideoCall roomId={roomId} onLeave={handleLeave} />
+        <VideoCall roomId={roomId} userName={userName} onLeave={handleLeave} />
       )}
     </main>
   );

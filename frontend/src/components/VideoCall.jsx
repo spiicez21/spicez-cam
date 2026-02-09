@@ -5,7 +5,7 @@ import VideoPlayer from '@/components/VideoPlayer';
 import { useWebRTC } from '@/hooks/useWebRTC';
 import { Copy, Check, Users, Mic, MicOff, Video, VideoOff, PhoneOff } from 'lucide-react';
 
-export default function VideoCall({ roomId, onLeave }) {
+export default function VideoCall({ roomId, userName, onLeave }) {
   const {
     localStream,
     remoteStreams,
@@ -82,7 +82,7 @@ export default function VideoCall({ roomId, onLeave }) {
           <VideoPlayer
             stream={localStream}
             muted={true}
-            label="You"
+            label={userName || 'You'}
             isAudioMuted={isAudioMuted}
             isVideoOff={isVideoOff}
             isLocal={true}

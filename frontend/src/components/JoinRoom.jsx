@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSocket } from '@/hooks/useSocket';
-import { ArrowLeft, LogIn, Loader2 } from 'lucide-react';
+import { ArrowLeft, LogIn, Loader2, UserRound } from 'lucide-react';
 
 export default function JoinRoom({ onRoomJoined, onBack }) {
+  const [name, setName] = useState('');
   const [digits, setDigits] = useState(Array(8).fill(''));
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -47,14 +48,14 @@ export default function JoinRoom({ onRoomJoined, onBack }) {
   }, []);
 
   const handleJoin = () => {
-    if (!socket || !roomId.trim()) return;
+    if (!socket || !roomId.trim() || !name.trim()) return;
     setLoading(true);
     setError('');
 
     socket.emit('join-room', { roomId: roomId.trim(), password: password || null }, (response) => {
       setLoading(false);
       if (response.success) {
-        onRoomJoined(roomId.trim());
+        onRoomJoined(roomId.trim(), name.trim());
       } else {
         setError(response.error || 'Failed to join room.');
       }
@@ -90,6 +91,22 @@ export default function JoinRoom({ onRoomJoined, onBack }) {
           </div>
 
           <div className="space-y-5">
+            <div>
+              <label className="block text-white/40 text-xs font-cabinet font-medium uppercase tracking-wider mb-2">
+                Your Name
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter your name"
+                  className="w-full pl-10 pr-4 py-3 sm:py-3.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white placeholder-white/20 font-cabinet text-sm sm:text-base focus:outline-none focus:border-[#556B2F]/50 focus:bg-white/[0.06] transition-all duration-300"
+                />
+                <UserRound size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/20" />
+              </div>
+            </div>
+
             <div>
               <label className="block text-white/40 text-xs font-cabinet font-medium uppercase tracking-wider mb-3">
                 Room ID
@@ -138,7 +155,7 @@ export default function JoinRoom({ onRoomJoined, onBack }) {
 
             <button
               onClick={handleJoin}
-              disabled={loading || roomId.length < 8}
+              disabled={loading || roomId.length < 8 || !name.trim()}
               className="w-full px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl bg-[#556B2F] text-white font-bold text-sm sm:text-base font-satoshi transition-all duration-300 hover:bg-[#6B8E3D] hover:shadow-[0_8px_32px_rgba(85,107,47,0.3)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none active:scale-[0.98]"
             >
               {loading ? (

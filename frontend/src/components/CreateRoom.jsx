@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useSocket } from '@/hooks/useSocket';
-import { ArrowLeft, Plus, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, Loader2, UserRound } from 'lucide-react';
 
 export default function CreateRoom({ onRoomCreated, onBack }) {
+  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -16,14 +17,14 @@ export default function CreateRoom({ onRoomCreated, onBack }) {
   }, []);
 
   const handleCreate = () => {
-    if (!socket) return;
+    if (!socket || !name.trim()) return;
     setLoading(true);
     setError('');
 
     socket.emit('create-room', { password: password || null }, (response) => {
       setLoading(false);
       if (response.success) {
-        onRoomCreated(response.roomId);
+        onRoomCreated(response.roomId, name.trim());
       } else {
         setError('Failed to create room. Please try again.');
       }
@@ -61,6 +62,22 @@ export default function CreateRoom({ onRoomCreated, onBack }) {
           <div className="space-y-5">
             <div>
               <label className="block text-white/40 text-xs font-cabinet font-medium uppercase tracking-wider mb-2">
+                Your Name
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter your name"
+                  className="w-full pl-10 pr-4 py-3 sm:py-3.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white placeholder-white/20 font-cabinet text-sm sm:text-base focus:outline-none focus:border-[#556B2F]/50 focus:bg-white/[0.06] transition-all duration-300"
+                />
+                <UserRound size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/20" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-white/40 text-xs font-cabinet font-medium uppercase tracking-wider mb-2">
                 Password
                 <span className="text-white/20 lowercase tracking-normal ml-1">(optional)</span>
               </label>
@@ -81,7 +98,7 @@ export default function CreateRoom({ onRoomCreated, onBack }) {
 
             <button
               onClick={handleCreate}
-              disabled={loading}
+              disabled={loading || !name.trim()}
               className="w-full px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl bg-[#556B2F] text-white font-bold text-sm sm:text-base font-satoshi transition-all duration-300 hover:bg-[#6B8E3D] hover:shadow-[0_8px_32px_rgba(85,107,47,0.3)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none active:scale-[0.98]"
             >
               {loading ? (
