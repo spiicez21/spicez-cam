@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import VideoPlayer from '@/components/VideoPlayer';
 import { useWebRTC } from '@/hooks/useWebRTC';
+import { Copy, Check, Users, Mic, MicOff, Video, VideoOff, PhoneOff } from 'lucide-react';
 
 export default function VideoCall({ roomId, onLeave }) {
   const {
@@ -52,27 +53,17 @@ export default function VideoCall({ roomId, onLeave }) {
             className="group flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] transition-all duration-300"
           >
             <span className="text-white/50 text-xs font-cabinet">{roomId}</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className={`text-white/30 group-hover:text-white/60 transition-all duration-300 ${copied ? 'text-[#6B8E3D]' : ''}`}>
-              {copied ? (
-                <polyline points="20 6 9 17 4 12" />
-              ) : (
-                <>
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                </>
-              )}
-            </svg>
+            {copied ? (
+              <Check size={12} className="text-[#6B8E3D] transition-all duration-300" />
+            ) : (
+              <Copy size={12} className="text-white/30 group-hover:text-white/60 transition-all duration-300" />
+            )}
           </button>
         </div>
 
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.04]">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-white/40">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-            </svg>
+            <Users size={12} className="text-white/40" />
             <span className="text-white/40 text-xs font-cabinet">{participantCount}</span>
           </div>
         </div>
@@ -123,13 +114,11 @@ export default function VideoCall({ roomId, onLeave }) {
             }`}
             title={isAudioMuted ? 'Unmute' : 'Mute'}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className={isAudioMuted ? 'text-red-400' : 'text-white/70'}>
-              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-              <line x1="12" y1="19" x2="12" y2="23" />
-              <line x1="8" y1="23" x2="16" y2="23" />
-              {isAudioMuted && <line x1="1" y1="1" x2="23" y2="23" className="text-red-400" />}
-            </svg>
+            {isAudioMuted ? (
+              <MicOff size={18} className="text-red-400" />
+            ) : (
+              <Mic size={18} className="text-white/70" />
+            )}
           </button>
 
           {/* Video toggle */}
@@ -142,11 +131,11 @@ export default function VideoCall({ roomId, onLeave }) {
             }`}
             title={isVideoOff ? 'Turn on camera' : 'Turn off camera'}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className={isVideoOff ? 'text-red-400' : 'text-white/70'}>
-              <polygon points="23 7 16 12 23 17 23 7" />
-              <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-              {isVideoOff && <line x1="1" y1="1" x2="23" y2="23" className="text-red-400" />}
-            </svg>
+            {isVideoOff ? (
+              <VideoOff size={18} className="text-red-400" />
+            ) : (
+              <Video size={18} className="text-white/70" />
+            )}
           </button>
 
           {/* Divider */}
@@ -155,8 +144,9 @@ export default function VideoCall({ roomId, onLeave }) {
           {/* Leave */}
           <button
             onClick={handleLeave}
-            className="px-6 py-3 rounded-xl bg-red-500/15 text-red-400 border border-red-500/20 hover:bg-red-500/25 font-bold text-sm font-satoshi transition-all duration-300 active:scale-[0.96]"
+            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-red-500/15 text-red-400 border border-red-500/20 hover:bg-red-500/25 font-bold text-sm font-satoshi transition-all duration-300 active:scale-[0.96]"
           >
+            <PhoneOff size={14} />
             Leave
           </button>
         </div>

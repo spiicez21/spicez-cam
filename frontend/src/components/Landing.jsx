@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Video, Plus, LogIn, ShieldCheck, Zap, Ghost } from 'lucide-react';
 
 export default function Landing({ onCreateRoom, onJoinRoom }) {
   const [mounted, setMounted] = useState(false);
@@ -23,10 +24,7 @@ export default function Landing({ onCreateRoom, onJoinRoom }) {
         <div className="text-center mb-14">
           {/* Icon mark */}
           <div className={`mx-auto mb-6 w-16 h-16 rounded-2xl bg-[#556B2F]/20 backdrop-blur-sm border border-[#556B2F]/30 flex items-center justify-center transition-all duration-700 delay-200 ${mounted ? 'opacity-100 scale-100' : 'opacity-0 scale-75'}`}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6B8E3D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="23 7 16 12 23 17 23 7" />
-              <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-            </svg>
+            <Video size={28} className="text-[#6B8E3D]" />
           </div>
 
           <h1 className="text-7xl sm:text-8xl font-black tracking-tighter mb-3 font-satoshi leading-none">
@@ -45,10 +43,7 @@ export default function Landing({ onCreateRoom, onJoinRoom }) {
             className="group flex-1 relative px-8 py-4 rounded-2xl bg-[#556B2F] text-white font-bold text-base font-satoshi transition-all duration-300 hover:bg-[#6B8E3D] hover:shadow-[0_8px_32px_rgba(85,107,47,0.3)] hover:scale-[1.02] active:scale-[0.98]"
           >
             <span className="relative z-10 flex items-center justify-center gap-2">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
+              <Plus size={18} strokeWidth={2.5} />
               Create Room
             </span>
           </button>
@@ -57,11 +52,7 @@ export default function Landing({ onCreateRoom, onJoinRoom }) {
             className="flex-1 px-8 py-4 rounded-2xl bg-white/[0.04] text-white/80 font-bold text-base font-satoshi transition-all duration-300 backdrop-blur-xl border border-white/[0.08] hover:bg-white/[0.08] hover:text-white hover:border-white/[0.15] hover:scale-[1.02] active:scale-[0.98]"
           >
             <span className="flex items-center justify-center gap-2">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                <polyline points="10 17 15 12 10 7" />
-                <line x1="15" y1="12" x2="3" y2="12" />
-              </svg>
+              <LogIn size={18} strokeWidth={2.5} />
               Join Room
             </span>
           </button>
@@ -71,12 +62,12 @@ export default function Landing({ onCreateRoom, onJoinRoom }) {
         <div className={`mt-14 p-5 rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] max-w-sm w-full transition-all duration-700 delay-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
           <div className="space-y-3">
             {[
-              { icon: '', text: 'End-to-end encrypted calls' },
-              { icon: '', text: 'No sign-up required' },
-              { icon: '', text: 'Rooms vanish when you leave' },
+              { icon: <ShieldCheck size={14} className="text-[#6B8E3D]" />, text: 'End-to-end encrypted calls' },
+              { icon: <Zap size={14} className="text-[#6B8E3D]" />, text: 'No sign-up required' },
+              { icon: <Ghost size={14} className="text-[#6B8E3D]" />, text: 'Rooms vanish when you leave' },
             ].map((item, i) => (
               <div key={i} className="flex items-center gap-3 group">
-                <div className="w-8 h-8 rounded-lg bg-[#556B2F]/10 flex items-center justify-center text-sm shrink-0 group-hover:bg-[#556B2F]/20 transition-colors duration-300">
+                <div className="w-8 h-8 rounded-lg bg-[#556B2F]/10 flex items-center justify-center shrink-0 group-hover:bg-[#556B2F]/20 transition-colors duration-300">
                   {item.icon}
                 </div>
                 <span className="text-white/45 text-sm font-cabinet font-light group-hover:text-white/60 transition-colors duration-300">

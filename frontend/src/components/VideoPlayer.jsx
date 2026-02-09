@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { User, MicOff } from 'lucide-react';
 
 export default function VideoPlayer({ stream, muted, label, isAudioMuted, isVideoOff, isLocal }) {
   const videoRef = useRef(null);
@@ -33,10 +34,7 @@ export default function VideoPlayer({ stream, muted, label, isAudioMuted, isVide
         <div className="absolute inset-0 flex items-center justify-center bg-[#111111]">
           <div className="flex flex-col items-center gap-3">
             <div className="w-16 h-16 rounded-2xl bg-[#556B2F]/10 border border-[#556B2F]/15 flex items-center justify-center">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#556B2F" strokeWidth="1.5" strokeLinecap="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
+              <User size={24} className="text-[#556B2F]" strokeWidth={1.5} />
             </div>
             <span className="text-white/20 text-xs font-cabinet">Camera off</span>
           </div>
@@ -53,10 +51,7 @@ export default function VideoPlayer({ stream, muted, label, isAudioMuted, isVide
         </span>
         {isAudioMuted && (
           <span className="w-6 h-6 rounded-lg bg-red-500/20 backdrop-blur-md border border-red-500/20 flex items-center justify-center">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-red-400">
-              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-              <line x1="1" y1="1" x2="23" y2="23" />
-            </svg>
+            <MicOff size={10} className="text-red-400" strokeWidth={2.5} />
           </span>
         )}
       </div>
