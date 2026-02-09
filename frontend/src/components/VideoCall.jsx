@@ -25,12 +25,12 @@ export default function VideoCall({ roomId, onLeave }) {
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold text-white">
+          <h2 className="text-lg font-bold text-white font-satoshi">
             <span className="text-[#556B2F]">Room:</span> {roomId}
           </h2>
           <button
             onClick={() => navigator.clipboard.writeText(roomId)}
-            className="text-white/40 hover:text-white text-sm transition-colors"
+            className="text-white/40 hover:text-white text-sm font-cabinet transition-colors"
           >
             Copy ID
           </button>
@@ -91,7 +91,7 @@ export default function VideoCall({ roomId, onLeave }) {
 
         <button
           onClick={handleLeave}
-          className="px-8 py-4 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 font-semibold transition-all duration-300"
+          className="px-8 py-4 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 font-bold font-satoshi transition-all duration-300"
         >
           Leave
         </button>

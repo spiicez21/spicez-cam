@@ -1,5 +1,101 @@
 @import "tailwindcss";
 
+/* ── Satoshi: Bold / Purpose Font ── */
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/Satoshi/Satoshi-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/Satoshi/Satoshi-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/Satoshi/Satoshi-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/Satoshi/Satoshi-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/Satoshi/Satoshi-Black.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── Cabinet Grotesk: Slim / Body Font ── */
+@font-face {
+  font-family: 'Cabinet Grotesk';
+  src: url('/Cabinet-grotesk/CabinetGrotesk-Thin.ttf') format('truetype');
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Cabinet Grotesk';
+  src: url('/Cabinet-grotesk/CabinetGrotesk-Extralight.ttf') format('truetype');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Cabinet Grotesk';
+  src: url('/Cabinet-grotesk/CabinetGrotesk-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Cabinet Grotesk';
+  src: url('/Cabinet-grotesk/CabinetGrotesk-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Cabinet Grotesk';
+  src: url('/Cabinet-grotesk/CabinetGrotesk-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Cabinet Grotesk';
+  src: url('/Cabinet-grotesk/CabinetGrotesk-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Cabinet Grotesk';
+  src: url('/Cabinet-grotesk/CabinetGrotesk-Extrabold.ttf') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Cabinet Grotesk';
+  src: url('/Cabinet-grotesk/CabinetGrotesk-Black.ttf') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── Theme Variables ── */
 :root {
   --olive-green: #556B2F;
   --olive-green-dark: #3F5221;
@@ -8,19 +104,40 @@
   --crow-black-light: #1A1A1A;
   --glass-white: rgba(255, 255, 255, 0.1);
   --glass-border: rgba(255, 255, 255, 0.2);
+
+  --font-satoshi: 'Satoshi', sans-serif;
+  --font-cabinet: 'Cabinet Grotesk', sans-serif;
 }
 
 @theme inline {
   --color-background: var(--crow-black);
   --color-foreground: #ededed;
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-olive: #556B2F;
+  --color-olive-dark: #3F5221;
+  --color-olive-light: #6B8E3D;
+  --color-crow: #0A0A0A;
+  --color-crow-light: #1A1A1A;
+  --font-sans: var(--font-cabinet);
+  --font-display: var(--font-satoshi);
 }
 
 body {
   background: var(--crow-black);
   color: #ededed;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-cabinet);
+}
+
+/* Utility classes for fonts */
+.font-satoshi {
+  font-family: var(--font-satoshi);
+}
+.font-cabinet {
+  font-family: var(--font-cabinet);
+}
+
+/* Headings use Satoshi (bold purpose font) */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-satoshi);
 }
 
 * {

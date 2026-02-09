@@ -37,11 +37,11 @@ export default function CreateRoom({ onRoomCreated, onBack }) {
 
         {/* Card */}
         <div className="p-8 rounded-3xl bg-white/5 backdrop-blur-md border border-white/10">
-          <h2 className="text-3xl font-bold mb-6">Create Room</h2>
+          <h2 className="text-3xl font-black mb-6 font-satoshi">Create Room</h2>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-white/50 text-sm mb-2">
+              <label className="block text-white/50 text-sm mb-2 font-cabinet">
                 Password (optional)
               </label>
               <input
@@ -60,7 +60,7 @@ export default function CreateRoom({ onRoomCreated, onBack }) {
             <button
               onClick={handleCreate}
               disabled={loading}
-              className="w-full px-8 py-4 rounded-xl bg-[#556B2F] hover:bg-[#6B8E3D] text-white font-semibold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-8 py-4 rounded-xl bg-[#556B2F] hover:bg-[#6B8E3D] text-white font-bold text-lg font-satoshi transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Creating...' : 'Create Room'}
             </button>
