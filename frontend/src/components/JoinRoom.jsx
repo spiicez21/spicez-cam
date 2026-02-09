@@ -127,7 +127,7 @@ export default function JoinRoom({ onRoomJoined, onBack }) {
                       const pasted = e.clipboardData.getData('text').replace(/\s/g, '').toUpperCase().slice(0, 5 - i);
                       handleDigitChange(i, pasted);
                     }}
-                    className="flex-1 min-w-0 aspect-square max-w-12 rounded-md sm:rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-center text-base sm:text-lg font-mono font-bold focus:outline-none focus:border-[#556B2F]/60 focus:bg-white/[0.08] transition-all duration-200 placeholder-white/10"
+                    className="flex-1 min-w-0 aspect-square max-w-16 rounded-lg sm:rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-center text-xl sm:text-2xl font-mono font-bold uppercase focus:outline-none focus:border-[#556B2F]/60 focus:bg-white/[0.08] transition-all duration-200 placeholder-white/10"
                   />
                 ))}
               </div>
