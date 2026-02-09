@@ -1,13 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSocket } from '@/hooks/useSocket';
 
 export default function CreateRoom({ onRoomCreated, onBack }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [mounted, setMounted] = useState(false);
   const { socket } = useSocket();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleCreate = () => {
     if (!socket) return;
@@ -25,44 +30,72 @@ export default function CreateRoom({ onRoomCreated, onBack }) {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen px-4">
-      <div className="w-full max-w-md">
+    <div className="relative flex flex-col items-center justify-center min-h-screen px-4 overflow-hidden">
+      {/* Ambient glow */}
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-[#556B2F]/6 blur-[100px] pointer-events-none" />
+
+      <div className={`relative z-10 w-full max-w-md transition-all duration-700 ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
         {/* Back button */}
         <button
           onClick={onBack}
-          className="mb-8 text-white/50 hover:text-white transition-colors flex items-center gap-2"
+          className="group mb-8 text-white/30 hover:text-white/70 transition-all duration-300 flex items-center gap-2 font-cabinet text-sm"
         >
-          ← Back
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="group-hover:-translate-x-1 transition-transform duration-300">
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+          Back
         </button>
 
-        {/* Card */}
-        <div className="p-8 rounded-3xl bg-white/5 backdrop-blur-md border border-white/10">
-          <h2 className="text-3xl font-black mb-6 font-satoshi">Create Room</h2>
+        {/* Glass Card */}
+        <div className="p-8 rounded-3xl bg-white/[0.03] backdrop-blur-2xl border border-white/[0.06] shadow-[0_8px_64px_rgba(0,0,0,0.4)]">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="w-12 h-12 rounded-xl bg-[#556B2F]/15 flex items-center justify-center mb-4">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6B8E3D" strokeWidth="2" strokeLinecap="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </div>
+            <h2 className="text-3xl font-black font-satoshi tracking-tight text-white/90">Create Room</h2>
+            <p className="text-white/30 text-sm font-cabinet font-light mt-1">Start a new video call</p>
+          </div>
 
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
-              <label className="block text-white/50 text-sm mb-2 font-cabinet">
-                Password (optional)
+              <label className="block text-white/40 text-xs font-cabinet font-medium uppercase tracking-wider mb-2">
+                Password
+                <span className="text-white/20 lowercase tracking-normal ml-1">(optional)</span>
               </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter room password"
-                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-[#556B2F] transition-colors"
+                placeholder="Set a room password"
+                className="w-full px-4 py-3.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white placeholder-white/20 font-cabinet focus:outline-none focus:border-[#556B2F]/50 focus:bg-white/[0.06] transition-all duration-300"
               />
             </div>
 
             {error && (
-              <p className="text-red-400 text-sm">{error}</p>
+              <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                <p className="text-red-400 text-sm font-cabinet">{error}</p>
+              </div>
             )}
 
             <button
               onClick={handleCreate}
               disabled={loading}
-              className="w-full px-8 py-4 rounded-xl bg-[#556B2F] hover:bg-[#6B8E3D] text-white font-bold text-lg font-satoshi transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-8 py-4 rounded-xl bg-[#556B2F] text-white font-bold text-base font-satoshi transition-all duration-300 hover:bg-[#6B8E3D] hover:shadow-[0_8px_32px_rgba(85,107,47,0.3)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none active:scale-[0.98]"
             >
-              {loading ? 'Creating...' : 'Create Room'}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Creating...
+                </span>
+              ) : 'Create Room'}
             </button>
           </div>
         </div>
