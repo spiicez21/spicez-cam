@@ -1,13 +1,10 @@
 [build]
   command = "npm run build"
-  publish = ".next"
+  publish = "out"
 
 [build.environment]
   NODE_VERSION = "20"
   NEXT_PUBLIC_SOCKET_URL = "https://spicez-cam-backend.onrender.com"
-
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
 
 [[headers]]
   for = "/*"
