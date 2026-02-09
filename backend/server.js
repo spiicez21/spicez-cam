@@ -20,6 +20,7 @@ app.use(express.json());
 
 // In-memory room storage
 const rooms = new Map();
+const userNames = new Map(); // socketId -> userName
 
 // REST endpoint to check server status
 app.get('/', (req, res) => {
@@ -31,8 +32,9 @@ io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
 
   // Create room
-  socket.on('create-room', ({ password }, callback) => {
+  socket.on('create-room', ({ password, userName }, callback) => {
     const roomId = uuidv4().slice(0, 8);
+    if (userName) userNames.set(socket.id, userName);
     rooms.set(roomId, {
       id: roomId,
       password: password || null,
@@ -40,12 +42,12 @@ io.on('connection', (socket) => {
       participants: [socket.id],
     });
     socket.join(roomId);
-    console.log(`Room created: ${roomId} by ${socket.id}`);
+    console.log(`Room created: ${roomId} by ${socket.id} (${userName || 'anonymous'})`);
     callback({ roomId, success: true });
   });
 
   // Join room
-  socket.on('join-room', ({ roomId, password }, callback) => {
+  socket.on('join-room', ({ roomId, password, userName }, callback) => {
     const room = rooms.get(roomId);
 
     if (!room) {
@@ -55,14 +57,20 @@ io.on('connection', (socket) => {
       return callback({ success: false, error: 'Incorrect password' });
     }
 
+    if (userName) userNames.set(socket.id, userName);
     room.participants.push(socket.id);
     socket.join(roomId);
 
-    // Notify existing participants
-    socket.to(roomId).emit('user-joined', { userId: socket.id });
+    // Notify existing participants with the new user's name
+    socket.to(roomId).emit('user-joined', { userId: socket.id, userName: userName || 'Anonymous' });
 
-    console.log(`User ${socket.id} joined room ${roomId}`);
-    callback({ success: true, participants: room.participants.filter((id) => id !== socket.id) });
+    // Send back list of existing participants with names
+    const participantsList = room.participants
+      .filter((id) => id !== socket.id)
+      .map((id) => ({ id, name: userNames.get(id) || 'Anonymous' }));
+
+    console.log(`User ${socket.id} (${userName || 'anonymous'}) joined room ${roomId}`);
+    callback({ success: true, participants: participantsList });
   });
 
   // WebRTC signaling: offer
@@ -106,6 +114,7 @@ io.on('connection', (socket) => {
         }
       }
     });
+    userNames.delete(socket.id);
   });
 });
 

@@ -1,26 +1,59 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import VideoPlayer from '@/components/VideoPlayer';
 import { useWebRTC } from '@/hooks/useWebRTC';
-import { Copy, Check, Users, Mic, MicOff, Video, VideoOff, PhoneOff } from 'lucide-react';
+import { useDevices } from '@/hooks/useDevices';
+import {
+  Copy, Check, Users, Mic, MicOff, Video, VideoOff, PhoneOff,
+  Settings, ChevronDown, X, Circle,
+} from 'lucide-react';
 
 export default function VideoCall({ roomId, userName, onLeave }) {
   const {
     localStream,
     remoteStreams,
+    participants,
     isAudioMuted,
     isVideoOff,
     toggleAudio,
     toggleVideo,
+    switchDevice,
     cleanup,
   } = useWebRTC(roomId);
 
+  const {
+    audioDevices,
+    videoDevices,
+    selectedAudioId,
+    selectedVideoId,
+    setSelectedAudioId,
+    setSelectedVideoId,
+  } = useDevices();
+
   const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showParticipants, setShowParticipants] = useState(false);
+  const [showDeviceMenu, setShowDeviceMenu] = useState(false);
+  const deviceMenuRef = useRef(null);
+  const participantsRef = useRef(null);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  // Close popups on outside click
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (deviceMenuRef.current && !deviceMenuRef.current.contains(e.target)) {
+        setShowDeviceMenu(false);
+      }
+      if (participantsRef.current && !participantsRef.current.contains(e.target)) {
+        setShowParticipants(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
   const handleLeave = () => {
@@ -34,7 +67,21 @@ export default function VideoCall({ roomId, userName, onLeave }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleAudioDeviceChange = (deviceId) => {
+    setSelectedAudioId(deviceId);
+    switchDevice('audio', deviceId);
+  };
+
+  const handleVideoDeviceChange = (deviceId) => {
+    setSelectedVideoId(deviceId);
+    switchDevice('video', deviceId);
+  };
+
   const participantCount = Object.keys(remoteStreams).length + 1;
+
+  // Build name lookup from participants array
+  const nameMap = {};
+  participants.forEach((p) => { nameMap[p.id] = p.name; });
 
   return (
     <div className={`flex flex-col h-screen bg-[#0A0A0A] transition-opacity duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
@@ -62,9 +109,72 @@ export default function VideoCall({ roomId, userName, onLeave }) {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-white/[0.04]">
-            <Users size={12} className="text-white/40" />
-            <span className="text-white/40 text-xs font-cabinet">{participantCount}</span>
+          {/* Participants toggle */}
+          <div className="relative" ref={participantsRef}>
+            <button
+              onClick={() => { setShowParticipants(!showParticipants); setShowDeviceMenu(false); }}
+              className={`flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full transition-all duration-300 ${
+                showParticipants
+                  ? 'bg-[#556B2F]/20 border border-[#556B2F]/30'
+                  : 'bg-white/[0.04] hover:bg-white/[0.08]'
+              }`}
+            >
+              <Users size={12} className={showParticipants ? 'text-[#6B8E3D]' : 'text-white/40'} />
+              <span className={`text-xs font-cabinet ${showParticipants ? 'text-[#6B8E3D]' : 'text-white/40'}`}>{participantCount}</span>
+            </button>
+
+            {/* Participants Panel */}
+            {showParticipants && (
+              <div className="absolute right-0 top-full mt-2 w-64 sm:w-72 rounded-xl bg-[#111]/95 backdrop-blur-2xl border border-white/[0.08] shadow-2xl z-50 overflow-hidden animate-[fade-in-up_0.2s_ease-out]">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+                  <span className="text-white/80 text-xs font-satoshi font-bold uppercase tracking-wider">Participants</span>
+                  <button onClick={() => setShowParticipants(false)} className="text-white/30 hover:text-white/60 transition-colors">
+                    <X size={14} />
+                  </button>
+                </div>
+                <div className="max-h-64 overflow-y-auto scrollbar-thin">
+                  {/* You (local) */}
+                  <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.03] transition-colors">
+                    <div className="relative shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-[#556B2F]/20 border border-[#556B2F]/30 flex items-center justify-center">
+                        <span className="text-[#6B8E3D] text-xs font-satoshi font-bold">
+                          {(userName || 'Y')[0].toUpperCase()}
+                        </span>
+                      </div>
+                      <Circle size={8} fill="#6B8E3D" className="text-[#6B8E3D] absolute -bottom-0.5 -right-0.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-white/80 text-sm font-cabinet font-medium block truncate">{userName || 'You'}</span>
+                      <span className="text-white/30 text-[10px] font-cabinet">You</span>
+                    </div>
+                    {isAudioMuted && <MicOff size={12} className="text-red-400/60 shrink-0" />}
+                  </div>
+
+                  {/* Remote participants */}
+                  {participants.map((p) => (
+                    <div key={p.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.03] transition-colors">
+                      <div className="relative shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-white/[0.06] border border-white/[0.1] flex items-center justify-center">
+                          <span className="text-white/60 text-xs font-satoshi font-bold">
+                            {(p.name || 'G')[0].toUpperCase()}
+                          </span>
+                        </div>
+                        <Circle size={8} fill="#6B8E3D" className="text-[#6B8E3D] absolute -bottom-0.5 -right-0.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-white/80 text-sm font-cabinet font-medium block truncate">{p.name || 'Guest'}</span>
+                      </div>
+                    </div>
+                  ))}
+
+                  {participants.length === 0 && (
+                    <div className="px-4 py-6 text-center">
+                      <span className="text-white/20 text-xs font-cabinet">No one else has joined yet</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -94,7 +204,7 @@ export default function VideoCall({ roomId, userName, onLeave }) {
               key={peerId}
               stream={stream}
               muted={false}
-              label={`Peer ${peerId.slice(0, 6)}`}
+              label={nameMap[peerId] || `Peer ${peerId.slice(0, 6)}`}
               isLocal={false}
             />
           ))}
@@ -103,7 +213,7 @@ export default function VideoCall({ roomId, userName, onLeave }) {
 
       {/* Controls - Floating bar Apple Music style */}
       <div className="flex items-center justify-center px-3 sm:px-6 py-3 sm:py-5">
-        <div className="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.06] shadow-[0_-4px_32px_rgba(0,0,0,0.3)]">
+        <div className="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.06] shadow-[0_-4px_32px_rgba(0,0,0,0.3)] relative">
           {/* Mic toggle */}
           <button
             onClick={toggleAudio}
@@ -137,6 +247,79 @@ export default function VideoCall({ roomId, userName, onLeave }) {
               <Video size={18} className="text-white/70" />
             )}
           </button>
+
+          {/* Device Settings */}
+          <div className="relative" ref={deviceMenuRef}>
+            <button
+              onClick={() => { setShowDeviceMenu(!showDeviceMenu); setShowParticipants(false); }}
+              className={`group relative w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center transition-all duration-300 ${
+                showDeviceMenu
+                  ? 'bg-[#556B2F]/15 border border-[#556B2F]/20'
+                  : 'bg-white/[0.06] border border-white/[0.08] hover:bg-white/[0.1]'
+              }`}
+              title="Device settings"
+            >
+              <Settings size={18} className={showDeviceMenu ? 'text-[#6B8E3D]' : 'text-white/70'} />
+            </button>
+
+            {/* Device Selection Popover */}
+            {showDeviceMenu && (
+              <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-72 sm:w-80 rounded-xl bg-[#111]/95 backdrop-blur-2xl border border-white/[0.08] shadow-2xl z-50 overflow-hidden animate-[fade-in-up_0.2s_ease-out]">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+                  <span className="text-white/80 text-xs font-satoshi font-bold uppercase tracking-wider">Devices</span>
+                  <button onClick={() => setShowDeviceMenu(false)} className="text-white/30 hover:text-white/60 transition-colors">
+                    <X size={14} />
+                  </button>
+                </div>
+
+                <div className="p-4 space-y-4">
+                  {/* Microphone Select */}
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-1.5 text-white/40 text-[10px] font-satoshi font-bold uppercase tracking-wider">
+                      <Mic size={10} />
+                      Microphone
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={selectedAudioId}
+                        onChange={(e) => handleAudioDeviceChange(e.target.value)}
+                        className="w-full appearance-none bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 pr-8 text-white/80 text-xs font-cabinet cursor-pointer hover:bg-white/[0.06] focus:outline-none focus:border-[#556B2F]/40 transition-all duration-200"
+                      >
+                        {audioDevices.map((d) => (
+                          <option key={d.deviceId} value={d.deviceId} className="bg-[#1a1a1a] text-white">
+                            {d.label || `Microphone ${d.deviceId.slice(0, 8)}`}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {/* Camera Select */}
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-1.5 text-white/40 text-[10px] font-satoshi font-bold uppercase tracking-wider">
+                      <Video size={10} />
+                      Camera
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={selectedVideoId}
+                        onChange={(e) => handleVideoDeviceChange(e.target.value)}
+                        className="w-full appearance-none bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 pr-8 text-white/80 text-xs font-cabinet cursor-pointer hover:bg-white/[0.06] focus:outline-none focus:border-[#556B2F]/40 transition-all duration-200"
+                      >
+                        {videoDevices.map((d) => (
+                          <option key={d.deviceId} value={d.deviceId} className="bg-[#1a1a1a] text-white">
+                            {d.label || `Camera ${d.deviceId.slice(0, 8)}`}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Divider */}
           <div className="w-px h-6 sm:h-8 bg-white/[0.08] mx-0.5 sm:mx-1" />

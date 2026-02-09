@@ -52,7 +52,7 @@ export default function JoinRoom({ onRoomJoined, onBack }) {
     setLoading(true);
     setError('');
 
-    socket.emit('join-room', { roomId: roomId.trim(), password: password || null }, (response) => {
+    socket.emit('join-room', { roomId: roomId.trim(), password: password || null, userName: name.trim() }, (response) => {
       setLoading(false);
       if (response.success) {
         onRoomJoined(roomId.trim(), name.trim());

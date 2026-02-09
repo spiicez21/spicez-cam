@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSocket } from './useSocket';
-import { createPeerConnection, getLocalStream } from '@/utils/webrtc';
+import { createPeerConnection } from '@/utils/webrtc';
 
 export function useWebRTC(roomId) {
   const { socket } = useSocket();
@@ -8,19 +8,39 @@ export function useWebRTC(roomId) {
   const [remoteStreams, setRemoteStreams] = useState({});
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
+  const [participants, setParticipants] = useState([]); // { id, name }
   const peersRef = useRef({});
 
-  // Initialize local media
+  // Initialize local media with optional device IDs
+  const initMedia = useCallback(async (audioDeviceId, videoDeviceId) => {
+    try {
+      const constraints = {
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: 'user',
+          ...(videoDeviceId ? { deviceId: { exact: videoDeviceId } } : {}),
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          ...(audioDeviceId ? { deviceId: { exact: audioDeviceId } } : {}),
+        },
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      return stream;
+    } catch (err) {
+      console.error('Failed to get local stream:', err);
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
-    const initMedia = async () => {
-      try {
-        const stream = await getLocalStream();
-        setLocalStream(stream);
-      } catch (err) {
-        console.error('Failed to get local stream:', err);
-      }
+    const start = async () => {
+      const stream = await initMedia();
+      if (stream) setLocalStream(stream);
     };
-    initMedia();
+    start();
 
     return () => {
       if (localStream) {
@@ -34,7 +54,12 @@ export function useWebRTC(roomId) {
     if (!socket || !localStream) return;
 
     // When a new user joins, create an offer
-    socket.on('user-joined', async ({ userId }) => {
+    socket.on('user-joined', async ({ userId, userName }) => {
+      setParticipants((prev) => {
+        if (prev.some((p) => p.id === userId)) return prev;
+        return [...prev, { id: userId, name: userName || 'Guest' }];
+      });
+
       const pc = createPeerConnection(userId, socket, localStream, (stream) => {
         setRemoteStreams((prev) => ({ ...prev, [userId]: stream }));
       });
@@ -47,6 +72,12 @@ export function useWebRTC(roomId) {
 
     // Receive an offer and send back an answer
     socket.on('offer', async ({ from, offer }) => {
+      // Ensure participant entry exists for the caller
+      setParticipants((prev) => {
+        if (prev.some((p) => p.id === from)) return prev;
+        return [...prev, { id: from, name: 'Guest' }];
+      });
+
       const pc = createPeerConnection(from, socket, localStream, (stream) => {
         setRemoteStreams((prev) => ({ ...prev, [from]: stream }));
       });
@@ -85,6 +116,7 @@ export function useWebRTC(roomId) {
         delete updated[userId];
         return updated;
       });
+      setParticipants((prev) => prev.filter((p) => p.id !== userId));
     });
 
     // Room closed
@@ -132,15 +164,60 @@ export function useWebRTC(roomId) {
     }
     setLocalStream(null);
     setRemoteStreams({});
+    setParticipants([]);
   }, [localStream]);
+
+  // Switch a single device (audio or video) without dropping peers
+  const switchDevice = useCallback(async (kind, deviceId) => {
+    if (!localStream) return;
+
+    try {
+      const isAudio = kind === 'audio';
+      const constraints = isAudio
+        ? { audio: { deviceId: { exact: deviceId }, echoCancellation: true, noiseSuppression: true } }
+        : { video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } } };
+
+      const tempStream = await navigator.mediaDevices.getUserMedia(constraints);
+      const newTrack = isAudio ? tempStream.getAudioTracks()[0] : tempStream.getVideoTracks()[0];
+
+      if (!newTrack) return;
+
+      // Replace track in the local stream
+      const oldTrack = isAudio ? localStream.getAudioTracks()[0] : localStream.getVideoTracks()[0];
+      if (oldTrack) {
+        localStream.removeTrack(oldTrack);
+        oldTrack.stop();
+      }
+      localStream.addTrack(newTrack);
+
+      // Preserve mute/off state
+      if (isAudio) newTrack.enabled = !isAudioMuted;
+      else newTrack.enabled = !isVideoOff;
+
+      // Replace track in all peer connections
+      Object.values(peersRef.current).forEach((pc) => {
+        const sender = pc.getSenders().find((s) =>
+          s.track && s.track.kind === (isAudio ? 'audio' : 'video')
+        );
+        if (sender) sender.replaceTrack(newTrack);
+      });
+
+      // Force re-render by updating stream reference
+      setLocalStream(localStream);
+    } catch (err) {
+      console.error(`Failed to switch ${kind} device:`, err);
+    }
+  }, [localStream, isAudioMuted, isVideoOff]);
 
   return {
     localStream,
     remoteStreams,
+    participants,
     isAudioMuted,
     isVideoOff,
     toggleAudio,
     toggleVideo,
+    switchDevice,
     cleanup,
   };
 }

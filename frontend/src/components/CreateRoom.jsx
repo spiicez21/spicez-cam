@@ -21,7 +21,7 @@ export default function CreateRoom({ onRoomCreated, onBack }) {
     setLoading(true);
     setError('');
 
-    socket.emit('create-room', { password: password || null }, (response) => {
+    socket.emit('create-room', { password: password || null, userName: name.trim() }, (response) => {
       setLoading(false);
       if (response.success) {
         onRoomCreated(response.roomId, name.trim());
