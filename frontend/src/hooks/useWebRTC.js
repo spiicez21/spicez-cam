@@ -10,6 +10,7 @@ export function useWebRTC(roomId) {
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [participants, setParticipants] = useState([]); // { id, name }
   const peersRef = useRef({});
+  const localStreamRef = useRef(null);
 
   // Initialize local media with optional device IDs
   const initMedia = useCallback(async (audioDeviceId, videoDeviceId) => {
@@ -35,6 +36,11 @@ export function useWebRTC(roomId) {
     }
   }, []);
 
+  // Keep ref in sync with state
+  useEffect(() => {
+    localStreamRef.current = localStream;
+  }, [localStream]);
+
   useEffect(() => {
     const start = async () => {
       const stream = await initMedia();
@@ -43,8 +49,10 @@ export function useWebRTC(roomId) {
     start();
 
     return () => {
-      if (localStream) {
-        localStream.getTracks().forEach((track) => track.stop());
+      // Use ref to avoid stale closure over null
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => track.stop());
+        localStreamRef.current = null;
       }
     };
   }, []);
@@ -159,13 +167,16 @@ export function useWebRTC(roomId) {
   const cleanup = useCallback(() => {
     Object.values(peersRef.current).forEach((pc) => pc.close());
     peersRef.current = {};
-    if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop());
+    // Use ref so cleanup always sees the current stream
+    const stream = localStreamRef.current;
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+      localStreamRef.current = null;
     }
     setLocalStream(null);
     setRemoteStreams({});
     setParticipants([]);
-  }, [localStream]);
+  }, []);
 
   // Switch a single device (audio or video) without dropping peers
   const switchDevice = useCallback(async (kind, deviceId) => {
