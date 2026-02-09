@@ -57,9 +57,20 @@ export function useWebRTC(roomId) {
     };
   }, []);
 
-  // Handle signaling
+  // Wait for local stream to be available (handles race condition)
+  const waitForStream = useCallback(() => {
+    return new Promise((resolve) => {
+      const check = () => {
+        if (localStreamRef.current) return resolve(localStreamRef.current);
+        setTimeout(check, 50);
+      };
+      check();
+    });
+  }, []);
+
+  // Handle signaling — set up listeners immediately, don't wait for localStream
   useEffect(() => {
-    if (!socket || !localStream) return;
+    if (!socket) return;
 
     // When a new user joins, create an offer
     socket.on('user-joined', async ({ userId, userName }) => {
@@ -68,8 +79,9 @@ export function useWebRTC(roomId) {
         return [...prev, { id: userId, name: userName || 'Guest' }];
       });
 
-      const pc = createPeerConnection(userId, socket, localStream, (stream) => {
-        setRemoteStreams((prev) => ({ ...prev, [userId]: stream }));
+      const stream = localStreamRef.current || await waitForStream();
+      const pc = createPeerConnection(userId, socket, stream, (remoteStream) => {
+        setRemoteStreams((prev) => ({ ...prev, [userId]: remoteStream }));
       });
       peersRef.current[userId] = pc;
 
@@ -86,8 +98,9 @@ export function useWebRTC(roomId) {
         return [...prev, { id: from, name: 'Guest' }];
       });
 
-      const pc = createPeerConnection(from, socket, localStream, (stream) => {
-        setRemoteStreams((prev) => ({ ...prev, [from]: stream }));
+      const stream = localStreamRef.current || await waitForStream();
+      const pc = createPeerConnection(from, socket, stream, (remoteStream) => {
+        setRemoteStreams((prev) => ({ ...prev, [from]: remoteStream }));
       });
       peersRef.current[from] = pc;
 
@@ -140,7 +153,7 @@ export function useWebRTC(roomId) {
       socket.off('user-left');
       socket.off('room-closed');
     };
-  }, [socket, localStream]);
+  }, [socket]);
 
   const toggleAudio = useCallback(() => {
     if (localStream) {
