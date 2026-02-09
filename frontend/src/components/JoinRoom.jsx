@@ -1,16 +1,46 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSocket } from '@/hooks/useSocket';
 import { ArrowLeft, LogIn, Loader2 } from 'lucide-react';
 
 export default function JoinRoom({ onRoomJoined, onBack }) {
-  const [roomId, setRoomId] = useState('');
+  const [digits, setDigits] = useState(Array(8).fill(''));
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
   const { socket } = useSocket();
+  const inputRefs = useRef([]);
+
+  const roomId = digits.join('');
+
+  const handleDigitChange = (index, value) => {
+    if (value.length > 1) {
+      // Handle paste
+      const pasted = value.slice(0, 8 - index).split('');
+      const newDigits = [...digits];
+      pasted.forEach((char, i) => {
+        if (index + i < 8) newDigits[index + i] = char;
+      });
+      setDigits(newDigits);
+      const nextIndex = Math.min(index + pasted.length, 7);
+      inputRefs.current[nextIndex]?.focus();
+      return;
+    }
+    const newDigits = [...digits];
+    newDigits[index] = value;
+    setDigits(newDigits);
+    if (value && index < 7) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleDigitKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !digits[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -50,25 +80,40 @@ export default function JoinRoom({ onRoomJoined, onBack }) {
         <div className="p-8 rounded-3xl bg-white/[0.03] backdrop-blur-2xl border border-white/[0.06] shadow-[0_8px_64px_rgba(0,0,0,0.4)]">
           {/* Header */}
           <div className="mb-8">
-            <div className="w-12 h-12 rounded-xl bg-[#556B2F]/15 flex items-center justify-center mb-4">
-              <LogIn size={22} className="text-[#6B8E3D]" />
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-[#556B2F]/15 flex items-center justify-center shrink-0">
+                <LogIn size={20} className="text-[#6B8E3D]" />
+              </div>
+              <h2 className="text-3xl font-black font-satoshi tracking-tight text-white/90">Join Room</h2>
             </div>
-            <h2 className="text-3xl font-black font-satoshi tracking-tight text-white/90">Join Room</h2>
             <p className="text-white/30 text-sm font-cabinet font-light mt-1">Enter a room ID to connect</p>
           </div>
 
           <div className="space-y-5">
             <div>
-              <label className="block text-white/40 text-xs font-cabinet font-medium uppercase tracking-wider mb-2">
+              <label className="block text-white/40 text-xs font-cabinet font-medium uppercase tracking-wider mb-3">
                 Room ID
               </label>
-              <input
-                type="text"
-                value={roomId}
-                onChange={(e) => setRoomId(e.target.value)}
-                placeholder="e.g. a1b2c3d4"
-                className="w-full px-4 py-3.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white placeholder-white/20 font-cabinet font-mono tracking-wider focus:outline-none focus:border-[#556B2F]/50 focus:bg-white/[0.06] transition-all duration-300"
-              />
+              <div className="flex gap-2 justify-between">
+                {digits.map((digit, i) => (
+                  <input
+                    key={i}
+                    ref={(el) => (inputRefs.current[i] = el)}
+                    type="text"
+                    inputMode="text"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleDigitChange(i, e.target.value)}
+                    onKeyDown={(e) => handleDigitKeyDown(i, e)}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const pasted = e.clipboardData.getData('text').replace(/\s/g, '').slice(0, 8 - i);
+                      handleDigitChange(i, pasted);
+                    }}
+                    className="w-10 h-12 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-center text-lg font-mono font-bold focus:outline-none focus:border-[#556B2F]/60 focus:bg-white/[0.08] transition-all duration-200 placeholder-white/10"
+                  />
+                ))}
+              </div>
             </div>
 
             <div>
@@ -93,7 +138,7 @@ export default function JoinRoom({ onRoomJoined, onBack }) {
 
             <button
               onClick={handleJoin}
-              disabled={loading || !roomId.trim()}
+              disabled={loading || roomId.length < 8}
               className="w-full px-8 py-4 rounded-xl bg-[#556B2F] text-white font-bold text-base font-satoshi transition-all duration-300 hover:bg-[#6B8E3D] hover:shadow-[0_8px_32px_rgba(85,107,47,0.3)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none active:scale-[0.98]"
             >
               {loading ? (

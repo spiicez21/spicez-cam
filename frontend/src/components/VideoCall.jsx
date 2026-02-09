@@ -50,13 +50,13 @@ export default function VideoCall({ roomId, onLeave }) {
           {/* Room ID pill */}
           <button
             onClick={handleCopyId}
-            className="group flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] transition-all duration-300"
+            className="group flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] transition-all duration-300"
           >
-            <span className="text-white/50 text-xs font-cabinet">{roomId}</span>
+            <span className="text-white/60 text-sm font-cabinet font-medium tracking-wide">{roomId}</span>
             {copied ? (
-              <Check size={12} className="text-[#6B8E3D] transition-all duration-300" />
+              <Check size={14} className="text-[#6B8E3D] transition-all duration-300" />
             ) : (
-              <Copy size={12} className="text-white/30 group-hover:text-white/60 transition-all duration-300" />
+              <Copy size={14} className="text-white/30 group-hover:text-white/60 transition-all duration-300" />
             )}
           </button>
         </div>

@@ -49,10 +49,12 @@ export default function CreateRoom({ onRoomCreated, onBack }) {
         <div className="p-8 rounded-3xl bg-white/[0.03] backdrop-blur-2xl border border-white/[0.06] shadow-[0_8px_64px_rgba(0,0,0,0.4)]">
           {/* Header */}
           <div className="mb-8">
-            <div className="w-12 h-12 rounded-xl bg-[#556B2F]/15 flex items-center justify-center mb-4">
-              <Plus size={22} className="text-[#6B8E3D]" />
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-[#556B2F]/15 flex items-center justify-center shrink-0">
+                <Plus size={20} className="text-[#6B8E3D]" />
+              </div>
+              <h2 className="text-3xl font-black font-satoshi tracking-tight text-white/90">Create Room</h2>
             </div>
-            <h2 className="text-3xl font-black font-satoshi tracking-tight text-white/90">Create Room</h2>
             <p className="text-white/30 text-sm font-cabinet font-light mt-1">Start a new video call</p>
           </div>
 

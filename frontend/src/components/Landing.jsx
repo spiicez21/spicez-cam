@@ -37,10 +37,10 @@ export default function Landing({ onCreateRoom, onJoinRoom }) {
         </div>
 
         {/* Action Buttons */}
-        <div className={`flex flex-col sm:flex-row gap-3 w-full max-w-sm transition-all duration-700 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
+        <div className={`flex flex-col sm:flex-row gap-3 w-full max-w-lg transition-all duration-700 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
           <button
             onClick={onCreateRoom}
-            className="group flex-1 relative px-8 py-4 rounded-2xl bg-[#556B2F] text-white font-bold text-base font-satoshi transition-all duration-300 hover:bg-[#6B8E3D] hover:shadow-[0_8px_32px_rgba(85,107,47,0.3)] hover:scale-[1.02] active:scale-[0.98]"
+            className="group flex-1 relative px-10 py-4 rounded-2xl bg-[#556B2F] text-white font-bold text-base font-satoshi whitespace-nowrap transition-all duration-300 hover:bg-[#6B8E3D] hover:shadow-[0_8px_32px_rgba(85,107,47,0.3)] hover:scale-[1.02] active:scale-[0.98]"
           >
             <span className="relative z-10 flex items-center justify-center gap-2">
               <Plus size={18} strokeWidth={2.5} />
@@ -49,7 +49,7 @@ export default function Landing({ onCreateRoom, onJoinRoom }) {
           </button>
           <button
             onClick={onJoinRoom}
-            className="flex-1 px-8 py-4 rounded-2xl bg-white/[0.04] text-white/80 font-bold text-base font-satoshi transition-all duration-300 backdrop-blur-xl border border-white/[0.08] hover:bg-white/[0.08] hover:text-white hover:border-white/[0.15] hover:scale-[1.02] active:scale-[0.98]"
+            className="flex-1 px-10 py-4 rounded-2xl bg-white/[0.04] text-white/80 font-bold text-base font-satoshi whitespace-nowrap transition-all duration-300 backdrop-blur-xl border border-white/[0.08] hover:bg-white/[0.08] hover:text-white hover:border-white/[0.15] hover:scale-[1.02] active:scale-[0.98]"
           >
             <span className="flex items-center justify-center gap-2">
               <LogIn size={18} strokeWidth={2.5} />
