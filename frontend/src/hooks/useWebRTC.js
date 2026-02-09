@@ -44,7 +44,13 @@ export function useWebRTC(roomId) {
   useEffect(() => {
     const start = async () => {
       const stream = await initMedia();
-      if (stream) setLocalStream(stream);
+      if (stream) {
+        setLocalStream(stream);
+        // Tell the room we're ready so existing participants send offers
+        if (socket && roomId) {
+          socket.emit('ready', { roomId });
+        }
+      }
     };
     start();
 
@@ -79,6 +85,12 @@ export function useWebRTC(roomId) {
         return [...prev, { id: userId, name: userName || 'Guest' }];
       });
 
+      // Close any stale peer connection for this user
+      if (peersRef.current[userId]) {
+        peersRef.current[userId].close();
+        delete peersRef.current[userId];
+      }
+
       const stream = localStreamRef.current || await waitForStream();
       const pc = createPeerConnection(userId, socket, stream, (remoteStream) => {
         setRemoteStreams((prev) => ({ ...prev, [userId]: remoteStream }));
@@ -97,6 +109,12 @@ export function useWebRTC(roomId) {
         if (prev.some((p) => p.id === from)) return prev;
         return [...prev, { id: from, name: 'Guest' }];
       });
+
+      // Close any stale peer connection for this user
+      if (peersRef.current[from]) {
+        peersRef.current[from].close();
+        delete peersRef.current[from];
+      }
 
       const stream = localStreamRef.current || await waitForStream();
       const pc = createPeerConnection(from, socket, stream, (remoteStream) => {

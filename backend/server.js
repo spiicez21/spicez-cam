@@ -84,6 +84,13 @@ io.on('connection', (socket) => {
     socket.to(to).emit('offer', { from: socket.id, offer });
   });
 
+  // Ready signal — joiner's VideoCall mounted, re-broadcast to room
+  socket.on('ready', ({ roomId }) => {
+    const userName = userNames.get(socket.id) || 'Anonymous';
+    socket.to(roomId).emit('user-joined', { userId: socket.id, userName });
+    console.log(`User ${socket.id} (${userName}) ready in room ${roomId}`);
+  });
+
   // WebRTC signaling: answer
   socket.on('answer', ({ to, answer }) => {
     socket.to(to).emit('answer', { from: socket.id, answer });
