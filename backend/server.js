@@ -5,6 +5,16 @@ const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 
+// Generate 5-char uppercase alphanumeric room ID
+function generateRoomId() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let id = '';
+  for (let i = 0; i < 5; i++) {
+    id += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return id;
+}
+
 const app = express();
 const server = http.createServer(app);
 
@@ -39,7 +49,8 @@ io.on('connection', (socket) => {
 
   // Create room
   socket.on('create-room', ({ password, userName }, callback) => {
-    const roomId = uuidv4().slice(0, 8);
+    let roomId = generateRoomId();
+    while (rooms.has(roomId)) roomId = generateRoomId();
     if (userName) userNames.set(socket.id, userName);
     rooms.set(roomId, {
       id: roomId,
@@ -67,8 +78,7 @@ io.on('connection', (socket) => {
     room.participants.push(socket.id);
     socket.join(roomId);
 
-    // Notify existing participants with the new user's name
-    socket.to(roomId).emit('user-joined', { userId: socket.id, userName: userName || 'Anonymous' });
+    // Don't emit user-joined here — wait for 'ready' event after VideoCall mounts
 
     // Send back list of existing participants with names
     const participantsList = room.participants
@@ -81,7 +91,8 @@ io.on('connection', (socket) => {
 
   // WebRTC signaling: offer
   socket.on('offer', ({ to, offer }) => {
-    socket.to(to).emit('offer', { from: socket.id, offer });
+    const userName = userNames.get(socket.id) || 'Anonymous';
+    socket.to(to).emit('offer', { from: socket.id, offer, userName });
   });
 
   // Ready signal — joiner's VideoCall mounted, re-broadcast to room

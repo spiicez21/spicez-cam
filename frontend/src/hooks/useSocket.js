@@ -8,9 +8,7 @@ let globalSocket = null;
 
 function getSocket() {
   if (!globalSocket) {
-    globalSocket = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'],
-    });
+    globalSocket = io(SOCKET_URL);
   }
   return globalSocket;
 }

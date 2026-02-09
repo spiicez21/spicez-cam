@@ -6,7 +6,7 @@ import { ArrowLeft, LogIn, Loader2, UserRound } from 'lucide-react';
 
 export default function JoinRoom({ onRoomJoined, onBack }) {
   const [name, setName] = useState('');
-  const [digits, setDigits] = useState(Array(8).fill(''));
+  const [digits, setDigits] = useState(Array(5).fill(''));
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -19,20 +19,20 @@ export default function JoinRoom({ onRoomJoined, onBack }) {
   const handleDigitChange = (index, value) => {
     if (value.length > 1) {
       // Handle paste
-      const pasted = value.slice(0, 8 - index).split('');
+      const pasted = value.toUpperCase().slice(0, 5 - index).split('');
       const newDigits = [...digits];
       pasted.forEach((char, i) => {
-        if (index + i < 8) newDigits[index + i] = char;
+        if (index + i < 5) newDigits[index + i] = char;
       });
       setDigits(newDigits);
-      const nextIndex = Math.min(index + pasted.length, 7);
+      const nextIndex = Math.min(index + pasted.length, 4);
       inputRefs.current[nextIndex]?.focus();
       return;
     }
     const newDigits = [...digits];
-    newDigits[index] = value;
+    newDigits[index] = value.toUpperCase();
     setDigits(newDigits);
-    if (value && index < 7) {
+    if (value && index < 4) {
       inputRefs.current[index + 1]?.focus();
     }
   };
@@ -124,7 +124,7 @@ export default function JoinRoom({ onRoomJoined, onBack }) {
                     onKeyDown={(e) => handleDigitKeyDown(i, e)}
                     onPaste={(e) => {
                       e.preventDefault();
-                      const pasted = e.clipboardData.getData('text').replace(/\s/g, '').slice(0, 8 - i);
+                      const pasted = e.clipboardData.getData('text').replace(/\s/g, '').toUpperCase().slice(0, 5 - i);
                       handleDigitChange(i, pasted);
                     }}
                     className="flex-1 min-w-0 aspect-square max-w-12 rounded-md sm:rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-center text-base sm:text-lg font-mono font-bold focus:outline-none focus:border-[#556B2F]/60 focus:bg-white/[0.08] transition-all duration-200 placeholder-white/10"
@@ -155,7 +155,7 @@ export default function JoinRoom({ onRoomJoined, onBack }) {
 
             <button
               onClick={handleJoin}
-              disabled={loading || roomId.length < 8 || !name.trim()}
+              disabled={loading || roomId.length < 5 || !name.trim()}
               className="w-full px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl bg-[#556B2F] text-white font-bold text-sm sm:text-base font-satoshi transition-all duration-300 hover:bg-[#6B8E3D] hover:shadow-[0_8px_32px_rgba(85,107,47,0.3)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none active:scale-[0.98]"
             >
               {loading ? (

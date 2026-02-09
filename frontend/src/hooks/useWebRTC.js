@@ -103,11 +103,18 @@ export function useWebRTC(roomId) {
     });
 
     // Receive an offer and send back an answer
-    socket.on('offer', async ({ from, offer }) => {
+    socket.on('offer', async ({ from, offer, userName }) => {
       // Ensure participant entry exists for the caller
       setParticipants((prev) => {
-        if (prev.some((p) => p.id === from)) return prev;
-        return [...prev, { id: from, name: 'Guest' }];
+        const existing = prev.find((p) => p.id === from);
+        if (existing) {
+          // Update name if we had 'Guest' before
+          if (userName && existing.name === 'Guest') {
+            return prev.map((p) => p.id === from ? { ...p, name: userName } : p);
+          }
+          return prev;
+        }
+        return [...prev, { id: from, name: userName || 'Guest' }];
       });
 
       // Close any stale peer connection for this user
