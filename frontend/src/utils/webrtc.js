@@ -1,23 +1,30 @@
+// Build ICE servers from env vars (TURN) + free STUN
+const turnUrl = process.env.NEXT_PUBLIC_TURN_URL;
+const turnUsername = process.env.NEXT_PUBLIC_TURN_USERNAME;
+const turnCredential = process.env.NEXT_PUBLIC_TURN_CREDENTIAL;
+
+const iceServers = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun3.l.google.com:19302' },
+  { urls: 'stun:stun4.l.google.com:19302' },
+];
+
+// Add TURN servers if credentials are configured
+if (turnUrl && turnUsername && turnCredential) {
+  // Support comma-separated TURN URLs
+  const urls = turnUrl.split(',').map((u) => u.trim());
+  iceServers.push({
+    urls,
+    username: turnUsername,
+    credential: turnCredential,
+  });
+}
+
 const ICE_SERVERS = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    {
-      urls: 'turn:openrelay.metered.ca:80',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
-    {
-      urls: 'turns:openrelay.metered.ca:443',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
-  ],
+  iceServers,
+  iceCandidatePoolSize: 10,
 };
 
 /**
