@@ -77,14 +77,14 @@ export default function JoinRoom({ onRoomJoined, onBack }) {
         </button>
 
         {/* Glass Card */}
-        <div className="p-8 rounded-3xl bg-white/[0.03] backdrop-blur-2xl border border-white/[0.06] shadow-[0_8px_64px_rgba(0,0,0,0.4)]">
+        <div className="p-5 sm:p-8 rounded-2xl sm:rounded-3xl bg-white/[0.03] backdrop-blur-2xl border border-white/[0.06] shadow-[0_8px_64px_rgba(0,0,0,0.4)]">
           {/* Header */}
-          <div className="mb-8">
+          <div className="mb-6 sm:mb-8">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-[#556B2F]/15 flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-[#556B2F]/15 flex items-center justify-center shrink-0">
                 <LogIn size={20} className="text-[#6B8E3D]" />
               </div>
-              <h2 className="text-3xl font-black font-satoshi tracking-tight text-white/90">Join Room</h2>
+              <h2 className="text-2xl sm:text-3xl font-black font-satoshi tracking-tight text-white/90">Join Room</h2>
             </div>
             <p className="text-white/30 text-sm font-cabinet font-light mt-1">Enter a room ID to connect</p>
           </div>
@@ -94,7 +94,7 @@ export default function JoinRoom({ onRoomJoined, onBack }) {
               <label className="block text-white/40 text-xs font-cabinet font-medium uppercase tracking-wider mb-3">
                 Room ID
               </label>
-              <div className="flex gap-2 justify-between">
+              <div className="flex gap-1.5 sm:gap-2 justify-between">
                 {digits.map((digit, i) => (
                   <input
                     key={i}
@@ -110,7 +110,7 @@ export default function JoinRoom({ onRoomJoined, onBack }) {
                       const pasted = e.clipboardData.getData('text').replace(/\s/g, '').slice(0, 8 - i);
                       handleDigitChange(i, pasted);
                     }}
-                    className="w-10 h-12 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-center text-lg font-mono font-bold focus:outline-none focus:border-[#556B2F]/60 focus:bg-white/[0.08] transition-all duration-200 placeholder-white/10"
+                    className="flex-1 min-w-0 aspect-square max-w-12 rounded-md sm:rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-center text-base sm:text-lg font-mono font-bold focus:outline-none focus:border-[#556B2F]/60 focus:bg-white/[0.08] transition-all duration-200 placeholder-white/10"
                   />
                 ))}
               </div>
@@ -126,7 +126,7 @@ export default function JoinRoom({ onRoomJoined, onBack }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Room password"
-                className="w-full px-4 py-3.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white placeholder-white/20 font-cabinet focus:outline-none focus:border-[#556B2F]/50 focus:bg-white/[0.06] transition-all duration-300"
+                className="w-full px-4 py-3 sm:py-3.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white placeholder-white/20 font-cabinet text-sm sm:text-base focus:outline-none focus:border-[#556B2F]/50 focus:bg-white/[0.06] transition-all duration-300"
               />
             </div>
 
@@ -139,7 +139,7 @@ export default function JoinRoom({ onRoomJoined, onBack }) {
             <button
               onClick={handleJoin}
               disabled={loading || roomId.length < 8}
-              className="w-full px-8 py-4 rounded-xl bg-[#556B2F] text-white font-bold text-base font-satoshi transition-all duration-300 hover:bg-[#6B8E3D] hover:shadow-[0_8px_32px_rgba(85,107,47,0.3)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none active:scale-[0.98]"
+              className="w-full px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl bg-[#556B2F] text-white font-bold text-sm sm:text-base font-satoshi transition-all duration-300 hover:bg-[#6B8E3D] hover:shadow-[0_8px_32px_rgba(85,107,47,0.3)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none active:scale-[0.98]"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
