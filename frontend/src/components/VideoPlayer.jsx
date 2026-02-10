@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { User, MicOff, VideoOff } from 'lucide-react';
+import { MicOff, VideoOff } from 'lucide-react';
 
-export default function VideoPlayer({ stream, muted, label, isAudioMuted, isVideoOff, isLocal }) {
+export default function VideoPlayer({
+  stream, muted, label, isAudioMuted, isVideoOff, isLocal,
+  avatarColor = 'from-pink-400 to-pink-600',
+}) {
   const videoRef = useRef(null);
   const [mounted, setMounted] = useState(false);
   const barsRef = useRef([]);
@@ -19,9 +22,7 @@ export default function VideoPlayer({ stream, muted, label, isAudioMuted, isVide
     .toUpperCase()
     .slice(0, 2);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     if (videoRef.current && stream) {
@@ -29,7 +30,7 @@ export default function VideoPlayer({ stream, muted, label, isAudioMuted, isVide
     }
   }, [stream]);
 
-  // Audio analyser — direct DOM updates for performance
+  // Audio analyser
   useEffect(() => {
     const state = audioStateRef.current;
 
@@ -45,23 +46,14 @@ export default function VideoPlayer({ stream, muted, label, isAudioMuted, isVide
       state.ctx = null;
       setIsSpeaking(false);
       barsRef.current.forEach((bar) => {
-        if (bar) {
-          bar.style.height = '2px';
-          bar.style.opacity = '0.25';
-        }
+        if (bar) { bar.style.height = '2px'; bar.style.opacity = '0.25'; }
       });
     };
 
-    if (!stream || isAudioMuted) {
-      cleanup();
-      return;
-    }
+    if (!stream || isAudioMuted) { cleanup(); return; }
 
     const audioTracks = stream.getAudioTracks();
-    if (!audioTracks.length || !audioTracks[0].enabled) {
-      cleanup();
-      return;
-    }
+    if (!audioTracks.length || !audioTracks[0].enabled) { cleanup(); return; }
 
     let cancelled = false;
 
@@ -83,16 +75,8 @@ export default function VideoPlayer({ stream, muted, label, isAudioMuted, isVide
         state.source = source;
         state.analyser = analyser;
 
-        const bufferLength = analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-
-        const bandRanges = [
-          [1, 4],
-          [4, 7],
-          [7, 11],
-          [11, 16],
-          [16, 23],
-        ];
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        const bandRanges = [[1, 4], [4, 7], [7, 11], [11, 16], [16, 23]];
 
         const tick = () => {
           if (cancelled) return;
@@ -100,20 +84,13 @@ export default function VideoPlayer({ stream, muted, label, isAudioMuted, isVide
 
           let maxLevel = 0;
           bandRanges.forEach((range, i) => {
-            let sum = 0;
-            let count = 0;
-            for (let b = range[0]; b < range[1]; b++) {
-              sum += dataArray[b];
-              count++;
-            }
-            const avg = sum / count;
-            const level = Math.min(avg / 180, 1);
+            let sum = 0, count = 0;
+            for (let b = range[0]; b < range[1]; b++) { sum += dataArray[b]; count++; }
+            const level = Math.min((sum / count) / 180, 1);
             maxLevel = Math.max(maxLevel, level);
-
             const bar = barsRef.current[i];
             if (bar) {
-              const h = Math.max(level * 14, 2);
-              bar.style.height = `${h}px`;
+              bar.style.height = `${Math.max(level * 14, 2)}px`;
               bar.style.opacity = `${Math.max(level, 0.25)}`;
             }
           });
@@ -126,15 +103,11 @@ export default function VideoPlayer({ stream, muted, label, isAudioMuted, isVide
 
           state.raf = requestAnimationFrame(tick);
         };
-
         state.raf = requestAnimationFrame(tick);
-      } catch (e) {
-        // Web Audio not available
-      }
+      } catch (e) { /* Web Audio not available */ }
     };
 
     init();
-
     return () => {
       cancelled = true;
       cleanup();
@@ -143,7 +116,11 @@ export default function VideoPlayer({ stream, muted, label, isAudioMuted, isVide
   }, [stream, isAudioMuted]);
 
   return (
-    <div className={`relative rounded-2xl sm:rounded-3xl overflow-hidden bg-[#1c1c1e] aspect-video group transition-all duration-500 ${mounted ? 'opacity-100 scale-100' : 'opacity-0 scale-95'} ${isSpeaking ? 'ring-2 ring-emerald-400/40 shadow-[0_0_24px_rgba(52,211,153,0.1)]' : ''}`}>
+    <div className={`relative rounded-2xl sm:rounded-3xl overflow-hidden bg-[#111111] h-full transition-all duration-500 ${
+      mounted ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+    } ${
+      isSpeaking ? 'ring-2 ring-emerald-400/40 shadow-[0_0_24px_rgba(52,211,153,0.1)]' : ''
+    }`}>
       {/* Video element */}
       <video
         ref={videoRef}
@@ -154,12 +131,11 @@ export default function VideoPlayer({ stream, muted, label, isAudioMuted, isVide
         style={isLocal ? { transform: 'scaleX(-1)' } : undefined}
       />
 
-      {/* Camera off state — FaceTime style with large initials */}
+      {/* Camera off — colorful avatar */}
       {isVideoOff && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#1c1c1e]">
-          {/* Large avatar circle */}
-          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-white/[0.12] to-white/[0.04] border border-white/[0.1] flex items-center justify-center mb-3">
-            <span className="text-white/60 text-xl sm:text-2xl font-satoshi font-bold">{initials}</span>
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#111111]">
+          <div className={`w-20 h-20 sm:w-28 sm:h-28 rounded-full bg-gradient-to-br ${avatarColor} flex items-center justify-center shadow-lg mb-3`}>
+            <span className="text-white text-2xl sm:text-4xl font-satoshi font-bold drop-shadow-sm">{initials}</span>
           </div>
           <span className="text-white/30 text-xs font-cabinet font-medium">{label}</span>
           <div className="flex items-center gap-1 mt-1.5">
@@ -169,19 +145,16 @@ export default function VideoPlayer({ stream, muted, label, isAudioMuted, isVide
         </div>
       )}
 
-      {/* Bottom label bar */}
-      <div className="absolute inset-x-0 bottom-0 px-3 py-2 sm:px-4 sm:py-3">
+      {/* Bottom overlay — frost glass name pill */}
+      <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4">
         <div className="flex items-center justify-between">
-          {/* Name + audio bars */}
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-md text-white/80 text-[11px] sm:text-xs font-cabinet font-medium flex items-center gap-2">
+            <span className="px-2.5 py-1 rounded-lg frost-glass text-white/80 text-[11px] sm:text-xs font-cabinet font-medium flex items-center gap-2">
               {label}
-              {isLocal && (
-                <span className="text-white/30 text-[9px]">(You)</span>
-              )}
+              {isLocal && <span className="text-white/30 text-[9px]">(You)</span>}
               {/* Audio wave bars */}
               {!isAudioMuted && (
-                <span className="flex items-end gap-[2px] h-3 ml-0.5">
+                <span className="flex items-end gap-[2px] h-3.5 ml-0.5">
                   {[0, 1, 2, 3, 4].map((i) => (
                     <span
                       key={i}
@@ -194,15 +167,13 @@ export default function VideoPlayer({ stream, muted, label, isAudioMuted, isVide
               )}
             </span>
 
-            {/* Muted indicator */}
             {isAudioMuted && (
-              <span className="w-6 h-6 rounded-lg bg-red-500/20 backdrop-blur-md flex items-center justify-center">
+              <span className="w-6 h-6 rounded-lg frost-glass flex items-center justify-center">
                 <MicOff size={10} className="text-red-400" />
               </span>
             )}
           </div>
 
-          {/* Local indicator dot */}
           {isLocal && (
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           )}

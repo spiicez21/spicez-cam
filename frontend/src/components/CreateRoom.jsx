@@ -47,7 +47,7 @@ export default function CreateRoom({ onRoomCreated, onBack }) {
         </button>
 
         {/* Glass Card */}
-        <div className="p-5 sm:p-8 rounded-2xl sm:rounded-3xl bg-white/[0.03] backdrop-blur-2xl border border-white/[0.06] shadow-[0_8px_64px_rgba(0,0,0,0.4)]">
+        <div className="p-5 sm:p-8 rounded-2xl sm:rounded-3xl frost-glass-card">
           {/* Header */}
           <div className="mb-6 sm:mb-8">
             <div className="flex items-center gap-3 mb-2">
@@ -70,7 +70,7 @@ export default function CreateRoom({ onRoomCreated, onBack }) {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Enter your name"
-                  className="w-full pl-10 pr-4 py-3 sm:py-3.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white placeholder-white/20 font-cabinet text-sm sm:text-base focus:outline-none focus:border-[#556B2F]/50 focus:bg-white/[0.06] transition-all duration-300"
+                  className="w-full pl-10 pr-4 py-3 sm:py-3.5 rounded-xl frost-glass-input text-white placeholder-white/20 font-cabinet text-sm sm:text-base focus:outline-none transition-all duration-300"
                 />
                 <UserRound size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/20" />
               </div>
@@ -86,7 +86,7 @@ export default function CreateRoom({ onRoomCreated, onBack }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Set a room password"
-                className="w-full px-4 py-3 sm:py-3.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-white placeholder-white/20 font-cabinet text-sm sm:text-base focus:outline-none focus:border-[#556B2F]/50 focus:bg-white/[0.06] transition-all duration-300"
+                className="w-full px-4 py-3 sm:py-3.5 rounded-xl frost-glass-input text-white placeholder-white/20 font-cabinet text-sm sm:text-base focus:outline-none transition-all duration-300"
               />
             </div>
 
