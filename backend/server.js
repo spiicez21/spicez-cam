@@ -2,7 +2,6 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 
 // Generate 5-char uppercase alphanumeric room ID
@@ -29,14 +28,28 @@ const io = new Server(server, {
     origin: allowedOrigins,
     methods: ['GET', 'POST'],
   },
+  // Low-latency: skip HTTP long-polling, go straight to WebSocket
+  transports: ['websocket'],
+  // Tune ping/pong for faster dead-connection detection
+  pingInterval: 10000,
+  pingTimeout: 5000,
+  // Disable per-message deflate — compression adds latency for small signaling payloads
+  perMessageDeflate: false,
+  // Allow larger payloads for batched ICE candidates
+  maxHttpBufferSize: 1e6,
 });
 
 app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
-// In-memory room storage
+// In-memory room storage — use Set for O(1) participant lookups
 const rooms = new Map();
 const userNames = new Map(); // socketId -> userName
+const socketRooms = new Map(); // socketId -> roomId (reverse index for fast disconnect)
+
+// Chat rate limiter: track last message timestamp per socket
+const chatRateLimit = new Map();
+const CHAT_RATE_MS = 200; // min 200ms between messages
 
 // REST endpoint to check server status
 app.get('/', (req, res) => {
@@ -45,8 +58,6 @@ app.get('/', (req, res) => {
 
 // Socket.io signaling
 io.on('connection', (socket) => {
-  console.log(`User connected: ${socket.id}`);
-
   // Create room
   socket.on('create-room', ({ password, userName }, callback) => {
     let roomId = generateRoomId();
@@ -56,10 +67,10 @@ io.on('connection', (socket) => {
       id: roomId,
       password: password || null,
       creator: socket.id,
-      participants: [socket.id],
+      participants: new Set([socket.id]),
     });
     socket.join(roomId);
-    console.log(`Room created: ${roomId} by ${socket.id} (${userName || 'anonymous'})`);
+    socketRooms.set(socket.id, roomId);
     callback({ roomId, success: true });
   });
 
@@ -75,17 +86,18 @@ io.on('connection', (socket) => {
     }
 
     if (userName) userNames.set(socket.id, userName);
-    room.participants.push(socket.id);
+    room.participants.add(socket.id);
     socket.join(roomId);
-
-    // Don't emit user-joined here — wait for 'ready' event after VideoCall mounts
+    socketRooms.set(socket.id, roomId);
 
     // Send back list of existing participants with names
-    const participantsList = room.participants
-      .filter((id) => id !== socket.id)
-      .map((id) => ({ id, name: userNames.get(id) || 'Anonymous' }));
+    const participantsList = [];
+    for (const id of room.participants) {
+      if (id !== socket.id) {
+        participantsList.push({ id, name: userNames.get(id) || 'Anonymous' });
+      }
+    }
 
-    console.log(`User ${socket.id} (${userName || 'anonymous'}) joined room ${roomId}`);
     callback({ success: true, participants: participantsList });
   });
 
@@ -99,7 +111,6 @@ io.on('connection', (socket) => {
   socket.on('ready', ({ roomId }) => {
     const userName = userNames.get(socket.id) || 'Anonymous';
     socket.to(roomId).emit('user-joined', { userId: socket.id, userName });
-    console.log(`User ${socket.id} (${userName}) ready in room ${roomId}`);
   });
 
   // WebRTC signaling: answer
@@ -107,9 +118,16 @@ io.on('connection', (socket) => {
     socket.to(to).emit('answer', { from: socket.id, answer });
   });
 
-  // WebRTC signaling: ICE candidate
+  // WebRTC signaling: single ICE candidate (backwards compat)
   socket.on('ice-candidate', ({ to, candidate }) => {
     socket.to(to).emit('ice-candidate', { from: socket.id, candidate });
+  });
+
+  // WebRTC signaling: batched ICE candidates (low-latency path)
+  socket.on('ice-candidates', ({ to, candidates }) => {
+    if (Array.isArray(candidates) && candidates.length > 0) {
+      socket.to(to).emit('ice-candidates', { from: socket.id, candidates });
+    }
   });
 
   // Toggle media state
@@ -121,36 +139,47 @@ io.on('connection', (socket) => {
     });
   });
 
-  // Chat message
+  // Chat message with rate limiting
   socket.on('chat-message', ({ roomId, message }) => {
+    // Rate limit check
+    const now = Date.now();
+    const lastMsg = chatRateLimit.get(socket.id) || 0;
+    if (now - lastMsg < CHAT_RATE_MS) return;
+    chatRateLimit.set(socket.id, now);
+
+    // Sanitize: truncate long messages
+    const sanitized = typeof message === 'string' ? message.slice(0, 1000) : '';
+    if (!sanitized) return;
+
     const userName = userNames.get(socket.id) || 'Anonymous';
     io.to(roomId).emit('chat-message', {
-      id: `${socket.id}-${Date.now()}`,
+      id: `${socket.id}-${now}`,
       userId: socket.id,
       userName,
-      message,
-      timestamp: Date.now(),
+      message: sanitized,
+      timestamp: now,
     });
   });
 
-  // Disconnect
+  // Disconnect — use reverse index for O(1) room lookup
   socket.on('disconnect', () => {
-    console.log(`User disconnected: ${socket.id}`);
-
-    rooms.forEach((room, roomId) => {
-      if (room.participants.includes(socket.id)) {
-        // If creator leaves, close the room
+    const roomId = socketRooms.get(socket.id);
+    if (roomId) {
+      const room = rooms.get(roomId);
+      if (room) {
         if (room.creator === socket.id) {
           io.to(roomId).emit('room-closed', { reason: 'Creator left the room' });
           rooms.delete(roomId);
-          console.log(`Room ${roomId} closed (creator left)`);
         } else {
-          room.participants = room.participants.filter((id) => id !== socket.id);
+          room.participants.delete(socket.id);
           socket.to(roomId).emit('user-left', { userId: socket.id });
         }
       }
-    });
+      socketRooms.delete(socket.id);
+    }
+
     userNames.delete(socket.id);
+    chatRateLimit.delete(socket.id);
   });
 });
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSocket } from './useSocket';
-import { createPeerConnection } from '@/utils/webrtc';
+import { createPeerConnection, createLowLatencyOffer, createLowLatencyAnswer } from '@/utils/webrtc';
 
 export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff = false } = {}) {
   const { socket } = useSocket();
@@ -19,14 +19,18 @@ export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff =
     try {
       const constraints = {
         video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
+          frameRate: { ideal: 30, max: 30 },
           facingMode: 'user',
           ...(videoDeviceId ? { deviceId: { exact: videoDeviceId } } : {}),
         },
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
+          autoGainControl: true,
+          // Lower latency audio
+          latency: 0.01,
           ...(audioDeviceId ? { deviceId: { exact: audioDeviceId } } : {}),
         },
       };
@@ -119,8 +123,8 @@ export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff =
       });
       peersRef.current[userId] = pc;
 
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
+      // Use low-latency offer (codec preferences + SDP tweaks)
+      const offer = await createLowLatencyOffer(pc);
       socket.emit('offer', { to: userId, offer });
     });
 
@@ -130,7 +134,6 @@ export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff =
       setParticipants((prev) => {
         const existing = prev.find((p) => p.id === from);
         if (existing) {
-          // Update name if we had 'Guest' before
           if (userName && existing.name === 'Guest') {
             return prev.map((p) => p.id === from ? { ...p, name: userName } : p);
           }
@@ -151,9 +154,8 @@ export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff =
       });
       peersRef.current[from] = pc;
 
-      await pc.setRemoteDescription(new RTCSessionDescription(offer));
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
+      // Use low-latency answer (codec preferences + SDP tweaks)
+      const answer = await createLowLatencyAnswer(pc, offer);
       socket.emit('answer', { to: from, answer });
     });
 
@@ -165,11 +167,22 @@ export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff =
       }
     });
 
-    // Receive ICE candidate
+    // Receive single ICE candidate (backwards compat)
     socket.on('ice-candidate', async ({ from, candidate }) => {
       const pc = peersRef.current[from];
       if (pc) {
         await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      }
+    });
+
+    // Receive batched ICE candidates (low-latency path)
+    socket.on('ice-candidates', async ({ from, candidates }) => {
+      const pc = peersRef.current[from];
+      if (pc && Array.isArray(candidates)) {
+        // Add all candidates in parallel for fastest setup
+        await Promise.all(
+          candidates.map((c) => pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {}))
+        );
       }
     });
 
@@ -213,6 +226,7 @@ export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff =
       socket.off('offer');
       socket.off('answer');
       socket.off('ice-candidate');
+      socket.off('ice-candidates');
       socket.off('user-left');
       socket.off('user-toggle-media');
       socket.off('room-closed');
@@ -262,8 +276,8 @@ export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff =
     try {
       const isAudio = kind === 'audio';
       const constraints = isAudio
-        ? { audio: { deviceId: { exact: deviceId }, echoCancellation: true, noiseSuppression: true } }
-        : { video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } } };
+        ? { audio: { deviceId: { exact: deviceId }, echoCancellation: true, noiseSuppression: true, autoGainControl: true, latency: 0.01 } }
+        : { video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } } };
 
       const tempStream = await navigator.mediaDevices.getUserMedia(constraints);
       const newTrack = isAudio ? tempStream.getAudioTracks()[0] : tempStream.getVideoTracks()[0];

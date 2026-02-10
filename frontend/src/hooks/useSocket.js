@@ -8,7 +8,18 @@ let globalSocket = null;
 
 function getSocket() {
   if (!globalSocket) {
-    globalSocket = io(SOCKET_URL);
+    globalSocket = io(SOCKET_URL, {
+      // Low-latency transport: skip long-polling, go straight to WebSocket
+      transports: ['websocket'],
+      // Faster reconnection
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 3000,
+      reconnectionAttempts: 10,
+      // Reduce overhead
+      upgrade: false,
+      // Larger buffer for batched messages
+      perMessageDeflate: false,
+    });
   }
   return globalSocket;
 }
@@ -21,12 +32,10 @@ export function useSocket() {
 
     const onConnect = () => {
       setIsConnected(true);
-      console.log('Connected to signaling server');
     };
 
     const onDisconnect = () => {
       setIsConnected(false);
-      console.log('Disconnected from signaling server');
     };
 
     socket.on('connect', onConnect);
