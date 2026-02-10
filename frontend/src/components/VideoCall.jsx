@@ -10,6 +10,7 @@ import { useSocket } from '@/hooks/useSocket';
 import {
   Copy, Check, Users, Mic, MicOff, Video, VideoOff, PhoneOff,
   Settings, ChevronDown, X, ChevronUp, Clock, MessageCircle,
+  MonitorUp, MonitorOff,
 } from 'lucide-react';
 
 // Session timer hook
@@ -34,11 +35,16 @@ export default function VideoCall({ roomId, userName, onLeave, initialAudioMuted
     localStream,
     remoteStreams,
     remoteMediaState,
+    remoteScreenState,
     participants,
     isAudioMuted,
     isVideoOff,
+    isScreenSharing,
+    screenStream,
     toggleAudio,
     toggleVideo,
+    startScreenShare,
+    stopScreenShare,
     switchDevice,
     cleanup,
   } = useWebRTC(roomId, { initialAudioMuted, initialVideoOff });
@@ -107,6 +113,7 @@ export default function VideoCall({ roomId, userName, onLeave, initialAudioMuted
   };
 
   const participantCount = Object.keys(remoteStreams).length + 1;
+  const tileCount = participantCount + (isScreenSharing ? 1 : 0);
   const nameMap = {};
   participants.forEach((p) => { nameMap[p.id] = p.name; });
 
@@ -125,15 +132,15 @@ export default function VideoCall({ roomId, userName, onLeave, initialAudioMuted
       {/* Video Grid */}
       <div className="flex-1 p-2 sm:p-4 overflow-hidden">
         <div className={`grid gap-2 sm:gap-3 h-full auto-rows-fr ${
-          participantCount === 1
+          tileCount === 1
             ? 'grid-cols-1 max-w-lg sm:max-w-3xl mx-auto'
-            : participantCount === 2
+            : tileCount === 2
             ? 'grid-cols-1 md:grid-cols-2'
-            : participantCount <= 4
+            : tileCount <= 4
             ? 'grid-cols-2'
             : 'grid-cols-2 lg:grid-cols-3'
         }`}>
-          {/* Local Video */}
+          {/* Local Video (camera) */}
           <VideoPlayer
             stream={localStream}
             muted={true}
@@ -143,6 +150,20 @@ export default function VideoCall({ roomId, userName, onLeave, initialAudioMuted
             isLocal={true}
             avatarColor="from-[#556B2F] to-[#6B8E3D]"
           />
+
+          {/* Local Screen Share (separate tile) */}
+          {isScreenSharing && screenStream && (
+            <VideoPlayer
+              stream={screenStream}
+              muted={true}
+              label={`${userName || 'You'}'s screen`}
+              isAudioMuted={false}
+              isVideoOff={false}
+              isLocal={false}
+              isScreenSharing={true}
+              avatarColor="from-[#556B2F] to-[#6B8E3D]"
+            />
+          )}
 
           {/* Remote Videos */}
           {Object.entries(remoteStreams).map(([peerId, stream], idx) => {
@@ -156,6 +177,7 @@ export default function VideoCall({ roomId, userName, onLeave, initialAudioMuted
                 isAudioMuted={peerMedia ? !peerMedia.audio : false}
                 isVideoOff={peerMedia ? !peerMedia.video : false}
                 isLocal={false}
+                isScreenSharing={!!remoteScreenState[peerId]}
                 avatarColor={avatarColors[idx % avatarColors.length]}
               />
             );
@@ -222,6 +244,22 @@ export default function VideoCall({ roomId, userName, onLeave, initialAudioMuted
               title={isVideoOff ? 'Turn on camera' : 'Turn off camera'}
             >
               {isVideoOff ? <VideoOff size={18} className="text-red-400" /> : <Video size={18} className="text-white/80" />}
+            </button>
+
+            {/* Screen Share */}
+            <button
+              onClick={isScreenSharing ? stopScreenShare : startScreenShare}
+              className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
+                isScreenSharing
+                  ? 'bg-[#556B2F]/30 hover:bg-[#556B2F]/40 ring-1 ring-[#556B2F]/50'
+                  : 'bg-white/[0.08] hover:bg-white/[0.14]'
+              }`}
+              title={isScreenSharing ? 'Stop sharing' : 'Share screen'}
+            >
+              {isScreenSharing
+                ? <MonitorOff size={18} className="text-[#6B8E3D]" />
+                : <MonitorUp size={18} className="text-white/80" />
+              }
             </button>
 
             {/* Emoji Reactions */}

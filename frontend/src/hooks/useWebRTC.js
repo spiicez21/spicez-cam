@@ -10,8 +10,13 @@ export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff =
   const [isVideoOff, setIsVideoOff] = useState(initialVideoOff);
   const [participants, setParticipants] = useState([]); // { id, name }
   const [remoteMediaState, setRemoteMediaState] = useState({}); // { [userId]: { audio: bool, video: bool } }
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [screenStream, setScreenStream] = useState(null);
+  const [remoteScreenState, setRemoteScreenState] = useState({}); // { [userId]: bool }
   const peersRef = useRef({});
   const localStreamRef = useRef(null);
+  const screenStreamRef = useRef(null);
+  const screenSendersRef = useRef({}); // { [peerId]: [sender, sender] } — screen track senders per peer
   const initedRef = useRef(false);
 
   // Initialize local media with optional device IDs
@@ -202,7 +207,24 @@ export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff =
         delete updated[userId];
         return updated;
       });
+      setRemoteScreenState((prev) => {
+        const updated = { ...prev };
+        delete updated[userId];
+        return updated;
+      });
       setParticipants((prev) => prev.filter((p) => p.id !== userId));
+    });
+
+    // Remote user screen share state
+    socket.on('user-screen-share', ({ userId, sharing }) => {
+      setRemoteScreenState((prev) => {
+        if (!sharing) {
+          const updated = { ...prev };
+          delete updated[userId];
+          return updated;
+        }
+        return { ...prev, [userId]: true };
+      });
     });
 
     // Remote user toggled their media
@@ -229,6 +251,7 @@ export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff =
       socket.off('ice-candidates');
       socket.off('user-left');
       socket.off('user-toggle-media');
+      socket.off('user-screen-share');
       socket.off('room-closed');
     };
   }, [socket]);
@@ -255,7 +278,82 @@ export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff =
     }
   }, [localStream, socket, roomId]);
 
+  // Start screen sharing — adds screen tracks alongside camera (both visible simultaneously)
+  const startScreenShare = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { cursor: 'always', frameRate: { ideal: 30 } },
+        audio: true, // capture system/tab audio
+      });
+
+      const screenVideoTrack = stream.getVideoTracks()[0];
+      const screenAudioTrack = stream.getAudioTracks()[0];
+
+      if (!screenVideoTrack) return;
+
+      // Add screen tracks to all existing peer connections (camera tracks stay untouched)
+      Object.entries(peersRef.current).forEach(([peerId, pc]) => {
+        const senders = [];
+        try {
+          senders.push(pc.addTrack(screenVideoTrack, stream));
+        } catch {}
+        if (screenAudioTrack) {
+          try {
+            senders.push(pc.addTrack(screenAudioTrack, stream));
+          } catch {}
+        }
+        screenSendersRef.current[peerId] = senders;
+      });
+
+      screenStreamRef.current = stream;
+      setScreenStream(stream);
+      setIsScreenSharing(true);
+      socket?.emit('screen-share-started', { roomId });
+
+      // Auto-stop when user clicks browser's "Stop sharing" button
+      screenVideoTrack.onended = () => {
+        stopScreenShare();
+      };
+    } catch (err) {
+      // User cancelled the picker — not an error
+      if (err.name !== 'AbortError' && err.name !== 'NotAllowedError') {
+        console.error('Screen share failed:', err);
+      }
+    }
+  }, [socket, roomId]);
+
+  // Stop screen sharing — remove screen tracks, camera stays as-is
+  const stopScreenShare = useCallback(() => {
+    // Remove screen senders from all peer connections
+    Object.entries(screenSendersRef.current).forEach(([peerId, senders]) => {
+      const pc = peersRef.current[peerId];
+      if (pc) {
+        senders.forEach((sender) => {
+          try { pc.removeTrack(sender); } catch {}
+        });
+      }
+    });
+    screenSendersRef.current = {};
+
+    // Stop all screen tracks
+    const stream = screenStreamRef.current;
+    if (stream) {
+      stream.getTracks().forEach((t) => t.stop());
+    }
+
+    screenStreamRef.current = null;
+    setScreenStream(null);
+    setIsScreenSharing(false);
+    socket?.emit('screen-share-stopped', { roomId });
+  }, [socket, roomId]);
+
   const cleanup = useCallback(() => {
+    // Stop screen share if active
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((t) => t.stop());
+      screenStreamRef.current = null;
+    }
+    screenSendersRef.current = {};
     Object.values(peersRef.current).forEach((pc) => pc.close());
     peersRef.current = {};
     // Use ref so cleanup always sees the current stream
@@ -315,11 +413,16 @@ export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff =
     localStream,
     remoteStreams,
     remoteMediaState,
+    remoteScreenState,
     participants,
     isAudioMuted,
     isVideoOff,
+    isScreenSharing,
+    screenStream,
     toggleAudio,
     toggleVideo,
+    startScreenShare,
+    stopScreenShare,
     switchDevice,
     cleanup,
   };

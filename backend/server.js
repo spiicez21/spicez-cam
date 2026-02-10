@@ -139,6 +139,15 @@ io.on('connection', (socket) => {
     });
   });
 
+  // Screen share state — broadcast to room
+  socket.on('screen-share-started', ({ roomId }) => {
+    socket.to(roomId).emit('user-screen-share', { userId: socket.id, sharing: true });
+  });
+
+  socket.on('screen-share-stopped', ({ roomId }) => {
+    socket.to(roomId).emit('user-screen-share', { userId: socket.id, sharing: false });
+  });
+
   // Emoji reaction — broadcast to room
   socket.on('emoji-reaction', ({ roomId, emoji }) => {
     const userName = userNames.get(socket.id) || 'Anonymous';

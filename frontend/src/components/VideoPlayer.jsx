@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { MicOff, VideoOff } from 'lucide-react';
+import { MicOff, VideoOff, MonitorUp } from 'lucide-react';
 
 export default function VideoPlayer({
   stream, muted, label, isAudioMuted, isVideoOff, isLocal,
+  isScreenSharing = false,
   avatarColor = 'from-pink-400 to-pink-600',
 }) {
   const videoRef = useRef(null);
@@ -127,8 +128,8 @@ export default function VideoPlayer({
         autoPlay
         playsInline
         muted={muted}
-        className={`w-full h-full object-cover transition-opacity duration-500 ${isVideoOff ? 'opacity-0' : 'opacity-100'}`}
-        style={isLocal ? { transform: 'scaleX(-1)' } : undefined}
+        className={`w-full h-full ${isScreenSharing ? 'object-contain bg-black' : 'object-cover'} transition-opacity duration-500 ${isVideoOff ? 'opacity-0' : 'opacity-100'}`}
+        style={isLocal && !isScreenSharing ? { transform: 'scaleX(-1)' } : undefined}
       />
 
       {/* Camera off — colorful avatar */}
@@ -166,6 +167,13 @@ export default function VideoPlayer({
                 </span>
               )}
             </span>
+
+            {isScreenSharing && (
+              <span className="px-2 py-1 rounded-lg bg-[#556B2F]/30 border border-[#556B2F]/40 flex items-center gap-1.5">
+                <MonitorUp size={10} className="text-[#6B8E3D]" />
+                <span className="text-[#6B8E3D] text-[10px] font-cabinet font-medium">Screen</span>
+              </span>
+            )}
 
             {isAudioMuted && (
               <span className="w-6 h-6 rounded-lg frost-glass flex items-center justify-center">
