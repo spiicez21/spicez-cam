@@ -11,6 +11,7 @@ export function useWebRTC(roomId) {
   const [participants, setParticipants] = useState([]); // { id, name }
   const peersRef = useRef({});
   const localStreamRef = useRef(null);
+  const initedRef = useRef(false);
 
   // Initialize local media with optional device IDs
   const initMedia = useCallback(async (audioDeviceId, videoDeviceId) => {
@@ -42,14 +43,17 @@ export function useWebRTC(roomId) {
   }, [localStream]);
 
   useEffect(() => {
+    if (!socket || !roomId || initedRef.current) return;
+    initedRef.current = true;
+
     const start = async () => {
       const stream = await initMedia();
       if (stream) {
+        // Update ref immediately so peer connections can use it right away
+        localStreamRef.current = stream;
         setLocalStream(stream);
         // Tell the room we're ready so existing participants send offers
-        if (socket && roomId) {
-          socket.emit('ready', { roomId });
-        }
+        socket.emit('ready', { roomId });
       }
     };
     start();
@@ -60,8 +64,9 @@ export function useWebRTC(roomId) {
         localStreamRef.current.getTracks().forEach((track) => track.stop());
         localStreamRef.current = null;
       }
+      initedRef.current = false;
     };
-  }, []);
+  }, [socket, roomId]);
 
   // Wait for local stream to be available (handles race condition)
   const waitForStream = useCallback(() => {
