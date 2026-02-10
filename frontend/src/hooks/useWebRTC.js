@@ -9,6 +9,7 @@ export function useWebRTC(roomId) {
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [participants, setParticipants] = useState([]); // { id, name }
+  const [remoteMediaState, setRemoteMediaState] = useState({}); // { [userId]: { audio: bool, video: bool } }
   const peersRef = useRef({});
   const localStreamRef = useRef(null);
   const initedRef = useRef(false);
@@ -167,7 +168,23 @@ export function useWebRTC(roomId) {
         delete updated[userId];
         return updated;
       });
+      setRemoteMediaState((prev) => {
+        const updated = { ...prev };
+        delete updated[userId];
+        return updated;
+      });
       setParticipants((prev) => prev.filter((p) => p.id !== userId));
+    });
+
+    // Remote user toggled their media
+    socket.on('user-toggle-media', ({ userId, type, enabled }) => {
+      setRemoteMediaState((prev) => ({
+        ...prev,
+        [userId]: {
+          ...(prev[userId] || { audio: true, video: true }),
+          [type]: enabled,
+        },
+      }));
     });
 
     // Room closed
@@ -181,6 +198,7 @@ export function useWebRTC(roomId) {
       socket.off('answer');
       socket.off('ice-candidate');
       socket.off('user-left');
+      socket.off('user-toggle-media');
       socket.off('room-closed');
     };
   }, [socket]);
@@ -266,6 +284,7 @@ export function useWebRTC(roomId) {
   return {
     localStream,
     remoteStreams,
+    remoteMediaState,
     participants,
     isAudioMuted,
     isVideoOff,
