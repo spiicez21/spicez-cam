@@ -271,3 +271,36 @@ h1, h2, h3, h4, h5, h6 {
   border-color: rgba(85, 107, 47, 0.5);
   box-shadow: 0 0 0 2px rgba(85, 107, 47, 0.15);
 }
+
+/* ── Emoji Reaction Float Animation ── */
+@keyframes emoji-float {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1) translateX(0);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(-60px) scale(1.15) translateX(8px);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-180px) scale(1.1) translateX(-6px);
+  }
+  50% {
+    opacity: 0.85;
+    transform: translateY(-320px) scale(1.0) translateX(10px);
+  }
+  70% {
+    opacity: 0.5;
+    transform: translateY(-480px) scale(0.9) translateX(-4px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-650px) scale(0.7) translateX(6px);
+  }
+}
+
+.animate-emoji-float {
+  animation: emoji-float 2.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  pointer-events: none;
+}

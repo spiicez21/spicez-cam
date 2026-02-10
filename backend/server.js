@@ -139,6 +139,16 @@ io.on('connection', (socket) => {
     });
   });
 
+  // Emoji reaction — broadcast to room
+  socket.on('emoji-reaction', ({ roomId, emoji }) => {
+    const userName = userNames.get(socket.id) || 'Anonymous';
+    socket.to(roomId).emit('emoji-reaction', {
+      userId: socket.id,
+      userName,
+      emoji,
+    });
+  });
+
   // Chat message with rate limiting
   socket.on('chat-message', ({ roomId, message }) => {
     // Rate limit check

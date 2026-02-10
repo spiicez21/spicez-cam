@@ -5,6 +5,7 @@ import VideoPlayer from '@/components/VideoPlayer';
 import { useWebRTC } from '@/hooks/useWebRTC';
 import { useDevices } from '@/hooks/useDevices';
 import ChatBox from '@/components/ChatBox';
+import EmojiReactions from '@/components/EmojiReactions';
 import { useSocket } from '@/hooks/useSocket';
 import {
   Copy, Check, Users, Mic, MicOff, Video, VideoOff, PhoneOff,
@@ -222,6 +223,9 @@ export default function VideoCall({ roomId, userName, onLeave, initialAudioMuted
             >
               {isVideoOff ? <VideoOff size={18} className="text-red-400" /> : <Video size={18} className="text-white/80" />}
             </button>
+
+            {/* Emoji Reactions */}
+            <EmojiReactions socket={socket} roomId={roomId} />
 
             {/* Device Settings */}
             <div className="relative" ref={deviceMenuRef}>
