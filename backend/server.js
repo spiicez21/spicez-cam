@@ -121,6 +121,18 @@ io.on('connection', (socket) => {
     });
   });
 
+  // Chat message
+  socket.on('chat-message', ({ roomId, message }) => {
+    const userName = userNames.get(socket.id) || 'Anonymous';
+    io.to(roomId).emit('chat-message', {
+      id: `${socket.id}-${Date.now()}`,
+      userId: socket.id,
+      userName,
+      message,
+      timestamp: Date.now(),
+    });
+  });
+
   // Disconnect
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);

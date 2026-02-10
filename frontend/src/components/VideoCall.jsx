@@ -4,9 +4,11 @@ import { useState, useEffect, useRef } from 'react';
 import VideoPlayer from '@/components/VideoPlayer';
 import { useWebRTC } from '@/hooks/useWebRTC';
 import { useDevices } from '@/hooks/useDevices';
+import ChatBox from '@/components/ChatBox';
+import { useSocket } from '@/hooks/useSocket';
 import {
   Copy, Check, Users, Mic, MicOff, Video, VideoOff, PhoneOff,
-  Settings, ChevronDown, X, ChevronUp, Clock,
+  Settings, ChevronDown, X, ChevronUp, Clock, MessageCircle,
 } from 'lucide-react';
 
 // Session timer hook
@@ -25,7 +27,8 @@ function useSessionTimer() {
     : `${pad(mins)}:${pad(secs)}`;
 }
 
-export default function VideoCall({ roomId, userName, onLeave }) {
+export default function VideoCall({ roomId, userName, onLeave, initialAudioMuted = false, initialVideoOff = false }) {
+  const { socket } = useSocket();
   const {
     localStream,
     remoteStreams,
@@ -37,7 +40,7 @@ export default function VideoCall({ roomId, userName, onLeave }) {
     toggleVideo,
     switchDevice,
     cleanup,
-  } = useWebRTC(roomId);
+  } = useWebRTC(roomId, { initialAudioMuted, initialVideoOff });
 
   const {
     audioDevices,
@@ -52,6 +55,9 @@ export default function VideoCall({ roomId, userName, onLeave }) {
   const [copied, setCopied] = useState(false);
   const [showDeviceMenu, setShowDeviceMenu] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const chatRef = useRef(null);
   const deviceMenuRef = useRef(null);
   const participantsRef = useRef(null);
   const elapsed = useSessionTimer();
@@ -63,10 +69,23 @@ export default function VideoCall({ roomId, userName, onLeave }) {
     const handleClick = (e) => {
       if (deviceMenuRef.current && !deviceMenuRef.current.contains(e.target)) setShowDeviceMenu(false);
       if (participantsRef.current && !participantsRef.current.contains(e.target)) setShowParticipants(false);
+      if (chatRef.current && !chatRef.current.contains(e.target)) setShowChat(false);
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
+
+  // Track unread messages when chat is closed
+  useEffect(() => {
+    if (!socket) return;
+    const handleChatMsg = (msg) => {
+      if (!showChat && msg.userId !== socket.id) {
+        setUnreadCount((c) => c + 1);
+      }
+    };
+    socket.on('chat-message', handleChatMsg);
+    return () => { socket.off('chat-message', handleChatMsg); };
+  }, [socket, showChat]);
 
   const handleLeave = () => { cleanup(); onLeave(); };
 
@@ -282,80 +301,120 @@ export default function VideoCall({ roomId, userName, onLeave }) {
             </button>
           </div>
 
-          {/* Right: Participants */}
-          <div className="flex flex-col items-end gap-2 shrink-0" ref={participantsRef}>
-            {/* Participants panel */}
-            {showParticipants && (
-              <div className="w-64 sm:w-72 rounded-2xl frost-glass-panel shadow-2xl overflow-hidden animate-[fade-in-up_0.2s_ease-out]">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
-                  <span className="text-white/90 text-sm font-satoshi font-bold">In this call</span>
-                  <button onClick={() => setShowParticipants(false)} className="text-white/30 hover:text-white/60 transition-colors">
-                    <X size={14} />
-                  </button>
+          {/* Right: Chat + Participants */}
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            {/* Panels (chat or participants) */}
+            <div className="relative" ref={chatRef}>
+              {showChat && (
+                <div className="absolute bottom-full mb-3 right-0 z-50 animate-[fade-in-up_0.2s_ease-out]">
+                  <ChatBox
+                    socket={socket}
+                    roomId={roomId}
+                    userName={userName}
+                    onClose={() => setShowChat(false)}
+                  />
                 </div>
-                <div className="max-h-52 overflow-y-auto scrollbar-thin">
-                  {/* Local */}
-                  <div className="flex items-center gap-3 px-4 py-2.5">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#556B2F] to-[#6B8E3D] flex items-center justify-center">
-                      <span className="text-white text-xs font-satoshi font-bold">
-                        {(userName || 'Y')[0].toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-white/90 text-sm font-cabinet font-medium block truncate">{userName || 'You'}</span>
-                      <span className="text-white/30 text-[10px] font-cabinet">You</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      {isVideoOff && <VideoOff size={11} className="text-white/30" />}
-                      {isAudioMuted && <MicOff size={11} className="text-red-400/60" />}
-                    </div>
+              )}
+            </div>
+
+            <div ref={participantsRef}>
+              {showParticipants && (
+                <div className="w-64 sm:w-72 rounded-2xl frost-glass-panel shadow-2xl overflow-hidden animate-[fade-in-up_0.2s_ease-out]">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+                    <span className="text-white/90 text-sm font-satoshi font-bold">In this call</span>
+                    <button onClick={() => setShowParticipants(false)} className="text-white/30 hover:text-white/60 transition-colors">
+                      <X size={14} />
+                    </button>
                   </div>
-
-                  {/* Remote */}
-                  {participants.map((p, idx) => {
-                    const peerMedia = remoteMediaState[p.id];
-                    const peerAudioMuted = peerMedia ? !peerMedia.audio : false;
-                    const peerVideoOff = peerMedia ? !peerMedia.video : false;
-                    return (
-                      <div key={p.id} className="flex items-center gap-3 px-4 py-2.5">
-                        <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${avatarColors[idx % avatarColors.length]} flex items-center justify-center`}>
-                          <span className="text-white text-xs font-satoshi font-bold">
-                            {(p.name || 'G')[0].toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <span className="text-white/80 text-sm font-cabinet font-medium block truncate">{p.name || 'Guest'}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          {peerVideoOff && <VideoOff size={11} className="text-white/30" />}
-                          {peerAudioMuted && <MicOff size={11} className="text-red-400/60" />}
-                        </div>
+                  <div className="max-h-52 overflow-y-auto scrollbar-thin">
+                    {/* Local */}
+                    <div className="flex items-center gap-3 px-4 py-2.5">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#556B2F] to-[#6B8E3D] flex items-center justify-center">
+                        <span className="text-white text-xs font-satoshi font-bold">
+                          {(userName || 'Y')[0].toUpperCase()}
+                        </span>
                       </div>
-                    );
-                  })}
-
-                  {participants.length === 0 && (
-                    <div className="px-4 py-6 text-center">
-                      <span className="text-white/20 text-xs font-cabinet">Waiting for others to join...</span>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-white/90 text-sm font-cabinet font-medium block truncate">{userName || 'You'}</span>
+                        <span className="text-white/30 text-[10px] font-cabinet">You</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {isVideoOff && <VideoOff size={11} className="text-white/30" />}
+                        {isAudioMuted && <MicOff size={11} className="text-red-400/60" />}
+                      </div>
                     </div>
-                  )}
-                </div>
-              </div>
-            )}
 
-            {/* Participants toggle */}
-            <button
-              onClick={() => { setShowParticipants(!showParticipants); setShowDeviceMenu(false); }}
-              className={`flex items-center gap-2 px-3 py-2 rounded-2xl transition-all duration-300 ${
-                showParticipants
-                  ? 'frost-glass-active'
-                  : 'frost-glass frost-glass-hover'
-              }`}
-            >
-              <Users size={14} className="text-white/60" />
-              <span className="text-white/70 text-sm font-cabinet font-medium">{participantCount}</span>
-              <ChevronUp size={12} className={`text-white/40 transition-transform duration-300 ${showParticipants ? 'rotate-180' : ''}`} />
-            </button>
+                    {/* Remote */}
+                    {participants.map((p, idx) => {
+                      const peerMedia = remoteMediaState[p.id];
+                      const peerAudioMuted = peerMedia ? !peerMedia.audio : false;
+                      const peerVideoOff = peerMedia ? !peerMedia.video : false;
+                      return (
+                        <div key={p.id} className="flex items-center gap-3 px-4 py-2.5">
+                          <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${avatarColors[idx % avatarColors.length]} flex items-center justify-center`}>
+                            <span className="text-white text-xs font-satoshi font-bold">
+                              {(p.name || 'G')[0].toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-white/80 text-sm font-cabinet font-medium block truncate">{p.name || 'Guest'}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            {peerVideoOff && <VideoOff size={11} className="text-white/30" />}
+                            {peerAudioMuted && <MicOff size={11} className="text-red-400/60" />}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {participants.length === 0 && (
+                      <div className="px-4 py-6 text-center">
+                        <span className="text-white/20 text-xs font-cabinet">Waiting for others to join...</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Toggle buttons row */}
+            <div className="flex items-center gap-2">
+              {/* Chat toggle */}
+              <button
+                onClick={() => {
+                  setShowChat(!showChat);
+                  if (!showChat) { setUnreadCount(0); setShowParticipants(false); }
+                  setShowDeviceMenu(false);
+                }}
+                className={`relative flex items-center gap-2 px-3 py-2 rounded-2xl transition-all duration-300 ${
+                  showChat
+                    ? 'frost-glass-active'
+                    : 'frost-glass frost-glass-hover'
+                }`}
+              >
+                <MessageCircle size={14} className="text-white/60" />
+                <span className="text-white/70 text-sm font-cabinet font-medium">Chat</span>
+                {unreadCount > 0 && (
+                  <span className="w-5 h-5 rounded-full bg-[#556B2F] flex items-center justify-center">
+                    <span className="text-white text-[9px] font-satoshi font-bold">{unreadCount > 9 ? '9+' : unreadCount}</span>
+                  </span>
+                )}
+              </button>
+
+              {/* Participants toggle */}
+              <button
+                onClick={() => { setShowParticipants(!showParticipants); if (!showParticipants) setShowChat(false); setShowDeviceMenu(false); }}
+                className={`flex items-center gap-2 px-3 py-2 rounded-2xl transition-all duration-300 ${
+                  showParticipants
+                    ? 'frost-glass-active'
+                    : 'frost-glass frost-glass-hover'
+                }`}
+              >
+                <Users size={14} className="text-white/60" />
+                <span className="text-white/70 text-sm font-cabinet font-medium">{participantCount}</span>
+                <ChevronUp size={12} className={`text-white/40 transition-transform duration-300 ${showParticipants ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
           </div>
         </div>
       </div>

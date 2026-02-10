@@ -2,12 +2,12 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSocket } from './useSocket';
 import { createPeerConnection } from '@/utils/webrtc';
 
-export function useWebRTC(roomId) {
+export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff = false } = {}) {
   const { socket } = useSocket();
   const [localStream, setLocalStream] = useState(null);
   const [remoteStreams, setRemoteStreams] = useState({});
-  const [isAudioMuted, setIsAudioMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(false);
+  const [isAudioMuted, setIsAudioMuted] = useState(initialAudioMuted);
+  const [isVideoOff, setIsVideoOff] = useState(initialVideoOff);
   const [participants, setParticipants] = useState([]); // { id, name }
   const [remoteMediaState, setRemoteMediaState] = useState({}); // { [userId]: { audio: bool, video: bool } }
   const peersRef = useRef({});
@@ -50,9 +50,25 @@ export function useWebRTC(roomId) {
     const start = async () => {
       const stream = await initMedia();
       if (stream) {
+        // Apply initial media preferences from the pre-join lobby
+        if (initialAudioMuted) {
+          const audioTrack = stream.getAudioTracks()[0];
+          if (audioTrack) audioTrack.enabled = false;
+        }
+        if (initialVideoOff) {
+          const videoTrack = stream.getVideoTracks()[0];
+          if (videoTrack) videoTrack.enabled = false;
+        }
         // Update ref immediately so peer connections can use it right away
         localStreamRef.current = stream;
         setLocalStream(stream);
+        // Broadcast initial media state
+        if (initialAudioMuted) {
+          socket.emit('toggle-media', { roomId, type: 'audio', enabled: false });
+        }
+        if (initialVideoOff) {
+          socket.emit('toggle-media', { roomId, type: 'video', enabled: false });
+        }
         // Tell the room we're ready so existing participants send offers
         socket.emit('ready', { roomId });
       }
