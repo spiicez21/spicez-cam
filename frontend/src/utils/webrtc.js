@@ -89,8 +89,15 @@ function applyLowLatencySDP(sdp) {
 /**
  * Create a new RTCPeerConnection and wire up tracks + ICE candidates.
  * Batches ICE candidates to reduce signaling messages.
+ *
+ * @param {string} peerId
+ * @param {object} socket
+ * @param {MediaStream} localStream
+ * @param {(stream: MediaStream) => void} onRemoteStream        – camera stream
+ * @param {(stream: MediaStream) => void} onRemoteScreenStream  – screen-share stream
+ * @param {(peerId: string, state: string) => void} onConnectionState
  */
-export function createPeerConnection(peerId, socket, localStream, onRemoteStream, onConnectionState) {
+export function createPeerConnection(peerId, socket, localStream, onRemoteStream, onRemoteScreenStream, onConnectionState) {
   const pc = new RTCPeerConnection(ICE_CONFIG);
 
   // Add local tracks with degradation preferences
@@ -111,11 +118,24 @@ export function createPeerConnection(peerId, socket, localStream, onRemoteStream
     }
   });
 
-  // Handle incoming remote tracks
+  // Track the first stream we see as the camera stream.
+  // Any subsequent *different* stream is a screen share.
+  let cameraStreamId = null;
+
   pc.ontrack = (event) => {
     const [remoteStream] = event.streams;
-    if (remoteStream) {
+    if (!remoteStream) return;
+
+    if (!cameraStreamId) {
+      // First stream — camera
+      cameraStreamId = remoteStream.id;
       onRemoteStream(remoteStream);
+    } else if (remoteStream.id === cameraStreamId) {
+      // Same camera stream (e.g. track replaced)
+      onRemoteStream(remoteStream);
+    } else {
+      // Different stream — screen share
+      if (onRemoteScreenStream) onRemoteScreenStream(remoteStream);
     }
   };
 

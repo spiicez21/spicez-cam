@@ -35,7 +35,7 @@ export default function VideoCall({ roomId, userName, onLeave, initialAudioMuted
     localStream,
     remoteStreams,
     remoteMediaState,
-    remoteScreenState,
+    remoteScreenStreams,
     participants,
     isAudioMuted,
     isVideoOff,
@@ -113,7 +113,8 @@ export default function VideoCall({ roomId, userName, onLeave, initialAudioMuted
   };
 
   const participantCount = Object.keys(remoteStreams).length + 1;
-  const tileCount = participantCount + (isScreenSharing ? 1 : 0);
+  const remoteScreenCount = Object.keys(remoteScreenStreams).length;
+  const tileCount = participantCount + (isScreenSharing ? 1 : 0) + remoteScreenCount;
   const nameMap = {};
   participants.forEach((p) => { nameMap[p.id] = p.name; });
 
@@ -177,11 +178,26 @@ export default function VideoCall({ roomId, userName, onLeave, initialAudioMuted
                 isAudioMuted={peerMedia ? !peerMedia.audio : false}
                 isVideoOff={peerMedia ? !peerMedia.video : false}
                 isLocal={false}
-                isScreenSharing={!!remoteScreenState[peerId]}
+                isScreenSharing={false}
                 avatarColor={avatarColors[idx % avatarColors.length]}
               />
             );
           })}
+
+          {/* Remote Screen Shares (separate tiles) */}
+          {Object.entries(remoteScreenStreams).map(([peerId, stream]) => (
+            <VideoPlayer
+              key={`${peerId}-screen`}
+              stream={stream}
+              muted={false}
+              label={`${nameMap[peerId] || 'Peer'}'s screen`}
+              isAudioMuted={false}
+              isVideoOff={false}
+              isLocal={false}
+              isScreenSharing={true}
+              avatarColor="from-gray-400 to-gray-600"
+            />
+          ))}
         </div>
       </div>
 

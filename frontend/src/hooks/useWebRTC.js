@@ -13,6 +13,7 @@ export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff =
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [screenStream, setScreenStream] = useState(null);
   const [remoteScreenState, setRemoteScreenState] = useState({}); // { [userId]: bool }
+  const [remoteScreenStreams, setRemoteScreenStreams] = useState({}); // { [userId]: MediaStream }
   const peersRef = useRef({});
   const localStreamRef = useRef(null);
   const screenStreamRef = useRef(null);
@@ -123,17 +124,32 @@ export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff =
       }
 
       const stream = localStreamRef.current || await waitForStream();
-      const pc = createPeerConnection(userId, socket, stream, (remoteStream) => {
-        setRemoteStreams((prev) => ({ ...prev, [userId]: remoteStream }));
-      });
+      const pc = createPeerConnection(userId, socket, stream,
+        (remoteStream) => {
+          setRemoteStreams((prev) => ({ ...prev, [userId]: remoteStream }));
+        },
+        (remoteScreenStream) => {
+          setRemoteScreenStreams((prev) => ({ ...prev, [userId]: remoteScreenStream }));
+        },
+      );
       peersRef.current[userId] = pc;
+
+      // If we're currently screen sharing, add screen tracks to the new peer
+      if (screenStreamRef.current) {
+        const sVideo = screenStreamRef.current.getVideoTracks()[0];
+        const sAudio = screenStreamRef.current.getAudioTracks()[0];
+        const senders = [];
+        if (sVideo) try { senders.push(pc.addTrack(sVideo, screenStreamRef.current)); } catch {}
+        if (sAudio) try { senders.push(pc.addTrack(sAudio, screenStreamRef.current)); } catch {}
+        if (senders.length) screenSendersRef.current[userId] = senders;
+      }
 
       // Use low-latency offer (codec preferences + SDP tweaks)
       const offer = await createLowLatencyOffer(pc);
       socket.emit('offer', { to: userId, offer });
     });
 
-    // Receive an offer and send back an answer
+    // Receive an offer and send back an answer (also handles renegotiation)
     socket.on('offer', async ({ from, offer, userName }) => {
       // Ensure participant entry exists for the caller
       setParticipants((prev) => {
@@ -147,17 +163,56 @@ export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff =
         return [...prev, { id: from, name: userName || 'Guest' }];
       });
 
-      // Close any stale peer connection for this user
-      if (peersRef.current[from]) {
-        peersRef.current[from].close();
+      const existingPc = peersRef.current[from];
+
+      // --- Renegotiation path: reuse existing peer connection ---
+      if (existingPc && existingPc.connectionState !== 'closed' && existingPc.signalingState !== 'closed') {
+        try {
+          // Handle glare: if we also have a pending local offer, one side must rollback.
+          // The peer with the lexicographically smaller socket id is "polite" and rolls back.
+          if (existingPc.signalingState === 'have-local-offer') {
+            const isPolite = socket.id < from;
+            if (isPolite) {
+              await existingPc.setLocalDescription({ type: 'rollback' });
+            } else {
+              // Impolite side ignores the incoming offer; our offer takes priority
+              return;
+            }
+          }
+          const answer = await createLowLatencyAnswer(existingPc, offer);
+          socket.emit('answer', { to: from, answer });
+        } catch (err) {
+          console.error('Renegotiation answer failed:', err);
+        }
+        return;
+      }
+
+      // --- New connection path ---
+      if (existingPc) {
+        existingPc.close();
         delete peersRef.current[from];
       }
 
       const stream = localStreamRef.current || await waitForStream();
-      const pc = createPeerConnection(from, socket, stream, (remoteStream) => {
-        setRemoteStreams((prev) => ({ ...prev, [from]: remoteStream }));
-      });
+      const pc = createPeerConnection(from, socket, stream,
+        (remoteStream) => {
+          setRemoteStreams((prev) => ({ ...prev, [from]: remoteStream }));
+        },
+        (remoteScreenStream) => {
+          setRemoteScreenStreams((prev) => ({ ...prev, [from]: remoteScreenStream }));
+        },
+      );
       peersRef.current[from] = pc;
+
+      // If we're currently screen sharing, add screen tracks to the new peer
+      if (screenStreamRef.current) {
+        const sVideo = screenStreamRef.current.getVideoTracks()[0];
+        const sAudio = screenStreamRef.current.getAudioTracks()[0];
+        const senders = [];
+        if (sVideo) try { senders.push(pc.addTrack(sVideo, screenStreamRef.current)); } catch {}
+        if (sAudio) try { senders.push(pc.addTrack(sAudio, screenStreamRef.current)); } catch {}
+        if (senders.length) screenSendersRef.current[from] = senders;
+      }
 
       // Use low-latency answer (codec preferences + SDP tweaks)
       const answer = await createLowLatencyAnswer(pc, offer);
@@ -212,6 +267,11 @@ export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff =
         delete updated[userId];
         return updated;
       });
+      setRemoteScreenStreams((prev) => {
+        const updated = { ...prev };
+        delete updated[userId];
+        return updated;
+      });
       setParticipants((prev) => prev.filter((p) => p.id !== userId));
     });
 
@@ -225,6 +285,14 @@ export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff =
         }
         return { ...prev, [userId]: true };
       });
+      // Clean up remote screen stream when sharing stops
+      if (!sharing) {
+        setRemoteScreenStreams((prev) => {
+          const updated = { ...prev };
+          delete updated[userId];
+          return updated;
+        });
+      }
     });
 
     // Remote user toggled their media
@@ -291,8 +359,8 @@ export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff =
 
       if (!screenVideoTrack) return;
 
-      // Add screen tracks to all existing peer connections (camera tracks stay untouched)
-      Object.entries(peersRef.current).forEach(([peerId, pc]) => {
+      // Add screen tracks to all existing peer connections and renegotiate
+      for (const [peerId, pc] of Object.entries(peersRef.current)) {
         const senders = [];
         try {
           senders.push(pc.addTrack(screenVideoTrack, stream));
@@ -303,7 +371,15 @@ export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff =
           } catch {}
         }
         screenSendersRef.current[peerId] = senders;
-      });
+
+        // Renegotiate so the remote peer learns about the new tracks
+        try {
+          const offer = await createLowLatencyOffer(pc);
+          socket?.emit('offer', { to: peerId, offer });
+        } catch (err) {
+          console.error('Screen share renegotiation failed for peer:', peerId, err);
+        }
+      }
 
       screenStreamRef.current = stream;
       setScreenStream(stream);
@@ -324,15 +400,19 @@ export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff =
 
   // Stop screen sharing — remove screen tracks, camera stays as-is
   const stopScreenShare = useCallback(() => {
-    // Remove screen senders from all peer connections
-    Object.entries(screenSendersRef.current).forEach(([peerId, senders]) => {
+    // Remove screen senders from all peer connections and renegotiate
+    for (const [peerId, senders] of Object.entries(screenSendersRef.current)) {
       const pc = peersRef.current[peerId];
       if (pc) {
         senders.forEach((sender) => {
           try { pc.removeTrack(sender); } catch {}
         });
+        // Renegotiate so remote peer drops the screen tracks
+        createLowLatencyOffer(pc)
+          .then((offer) => socket?.emit('offer', { to: peerId, offer }))
+          .catch(() => {});
       }
-    });
+    }
     screenSendersRef.current = {};
 
     // Stop all screen tracks
@@ -414,6 +494,7 @@ export function useWebRTC(roomId, { initialAudioMuted = false, initialVideoOff =
     remoteStreams,
     remoteMediaState,
     remoteScreenState,
+    remoteScreenStreams,
     participants,
     isAudioMuted,
     isVideoOff,
